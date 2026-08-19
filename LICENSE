@@ -1,0 +1,50 @@
+Hexprite Freeware End-User License Agreement (EULA)
+
+Copyright (c) 2026 Intisar Bin Naim
+Website: hexprite.com
+
+By downloading, installing, or using Hexprite (the "Software"), you agree to be
+bound by the terms of this End-User License Agreement ("Agreement"). If you do
+not agree to the terms of this Agreement, do not install or use the Software.
+
+1. Grant of License
+The creator hereby grants you a personal, non-exclusive, non-transferable, and
+royalty-free license to use the Software in its compiled, executable form. You
+may use the Software for personal, educational, and internal commercial purposes
+(such as creating assets for your own commercial hardware or software projects).
+
+2. Restrictions
+You are expressly prohibited from the following actions:
+* Reverse-engineering, decompiling, disassembling, or otherwise attempting to
+  discover or extract the source code of the Software.
+* Modifying, translating, adapting, or creating derivative works based on the
+  Software's binary files.
+* Selling, renting, leasing, or sub-licensing the Software or any portion
+  thereof to third parties.
+* Removing, altering, or obscuring any copyright, trademark, or other
+  proprietary rights notices embedded within the Software.
+
+3. Distribution
+You may redistribute the unmodified installer of the Software free of charge,
+provided that this complete Agreement is included with the distribution and no
+fee is charged for the Software itself.
+
+4. Ownership and Intellectual Property
+This Agreement strictly grants the right to use the Software and does not
+constitute a transfer of ownership. The creator retains all title, ownership,
+and intellectual property rights to the Software, including all associated
+media, designs, and branding.
+
+5. Future Open Source Release
+This Agreement applies exclusively to the closed-source, compiled binary
+distribution of the Software. Should the creator make the software's source
+code publicly available in the future, that specific source code distribution
+will be governed by a separate open-source license provided at that time.
+
+6. Disclaimer of Warranty
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHOR
+OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
