@@ -11,15 +11,19 @@
 
 ---
 
+<img src="./docs/images/Hexprite_Interface.png" width="100%" alt="Hexprite Interface">
+
 Hexprite is a indie desktop application specifically engineered for **embedded software engineers, IoT creators, makers, pixel artists, and retro-computing hardware enthusiasts**.
 
 Unlike general-purpose art tools (like Photoshop or Aseprite), Hexprite is purpose-built with a **strict 1-bit monochrome data engine** to bridge the gap between creative pixel art design and the rigid memory, format, and display constraints of embedded hardware displays (OLED, e-Paper, Flipper Zero etc.).
 
 Currently, it features a strict 1-bit monochrome editor and a custom bitmap font engine. A dedicated color mode for TFT/RGB displays is planned for a future release.
 
+<br/>
+
 ## ✨ Key Features
 
-<br>
+<br/>
 
 <details open>
   <summary><b>1-Bit Graphics Engine & Editor</b></summary>
