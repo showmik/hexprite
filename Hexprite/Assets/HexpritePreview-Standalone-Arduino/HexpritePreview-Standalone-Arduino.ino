@@ -34,9 +34,10 @@
 
 // --- Display connection type: uncomment ONE ---
 #define USE_I2C
+// #define USE_SOFTWARE_I2C   // Uncomment for custom I2C pins on AVR (Uno/Nano)
 // #define USE_SPI
 
-// --- I2C Pin Configuration (only used when USE_I2C is defined) ---
+// --- I2C Pin Configuration (only used when USE_I2C or USE_SOFTWARE_I2C is defined) ---
 #define I2C_SDA_PIN   SDA     // Default SDA pin (Arduino Uno: A4, ESP32: 21, etc.)
 #define I2C_SCL_PIN   SCL     // Default SCL pin (Arduino Uno: A5, ESP32: 22, etc.)
 #define I2C_ADDRESS   0x3C    // Most OLED modules use 0x3C, some use 0x3D
@@ -68,14 +69,27 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // --- I2C displays ---
-#if defined(DISPLAY_SSD1306_128X64_I2C)
-  U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-#elif defined(DISPLAY_SSD1306_128X32_I2C)
-  U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-#elif defined(DISPLAY_SH1106_128X64_I2C)
-  U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-#elif defined(DISPLAY_SSD1309_128X64_I2C)
-  U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+#if defined(USE_SOFTWARE_I2C)
+  #if defined(DISPLAY_SSD1306_128X64_I2C)
+    U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ I2C_SCL_PIN, /* data=*/ I2C_SDA_PIN, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SSD1306_128X32_I2C)
+    U8G2_SSD1306_128X32_UNIVISION_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ I2C_SCL_PIN, /* data=*/ I2C_SDA_PIN, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SH1106_128X64_I2C)
+    U8G2_SH1106_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ I2C_SCL_PIN, /* data=*/ I2C_SDA_PIN, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SSD1309_128X64_I2C)
+    U8G2_SSD1309_128X64_NONAME0_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ I2C_SCL_PIN, /* data=*/ I2C_SDA_PIN, /* reset=*/ U8X8_PIN_NONE);
+  #endif
+#else
+  #if defined(DISPLAY_SSD1306_128X64_I2C)
+    U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SSD1306_128X32_I2C)
+    U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SH1106_128X64_I2C)
+    U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #elif defined(DISPLAY_SSD1309_128X64_I2C)
+    U8G2_SSD1309_128X64_NONAME0_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+  #endif
+#endif
 
 // --- SPI displays ---
 #elif defined(DISPLAY_SSD1306_128X64_SPI)
@@ -178,22 +192,22 @@ void loop() {
       // We need at least 6 bytes to know the payload size
       // Header(2) + Width_L(1) + Width_H(1) + Height_L(1) + Height_H(1)
       if (bufferIndex >= 6) {
-        int w = buffer[2] | (buffer[3] << 8);  // Little-endian 16-bit width
-        int h = buffer[4] | (buffer[5] << 8);  // Little-endian 16-bit height
-        int dataSize = ((w + 7) / 8) * h;
-        int totalSize = 6 + dataSize + 1; // Header(2) + W(2) + H(2) + Data + Checksum(1)
+        uint16_t w = (uint16_t)(buffer[2] | (buffer[3] << 8));  // Little-endian 16-bit width
+        uint16_t h = (uint16_t)(buffer[4] | (buffer[5] << 8));  // Little-endian 16-bit height
+        uint32_t dataSize = ((uint32_t)(w + 7) / 8) * (uint32_t)h;
+        uint32_t totalSize = 6 + dataSize + 1; // Header(2) + W(2) + H(2) + Data + Checksum(1)
         
-        if (totalSize > MAX_BUFFER || w <= 0 || h <= 0) {
+        if (totalSize > (uint32_t)MAX_BUFFER || w == 0 || h == 0) {
           // Packet too large or invalid dimensions, safety reset
           packetStarted = false;
           bufferIndex = 0;
           continue;
         }
         
-        if (bufferIndex == totalSize) {
+        if ((uint32_t)bufferIndex == totalSize) {
           // Full packet received, verify checksum
           byte checksum = 0;
-          for (int i = 0; i < totalSize - 1; i++) {
+          for (uint32_t i = 0; i < totalSize - 1; i++) {
             checksum ^= buffer[i];
           }
           

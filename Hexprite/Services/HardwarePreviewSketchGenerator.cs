@@ -46,7 +46,8 @@ namespace Hexprite.Services
                 sb.AppendLine("#define USE_SPI");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_CS_PIN    {config.CsPin.Trim()}");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_DC_PIN    {config.DcPin.Trim()}");
-                sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_RST_PIN   {config.RstPin.Trim()}");
+                string rstPin = string.IsNullOrWhiteSpace(config.RstPin) ? "U8X8_PIN_NONE" : config.RstPin.Trim();
+                sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_RST_PIN   {rstPin}");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_CLK_PIN   {config.ClkPin.Trim()}");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"#define SPI_MOSI_PIN  {config.MosiPin.Trim()}");
             }
@@ -243,7 +244,7 @@ namespace Hexprite.Services
             }
         }
 
-        public static string GenerateLibrarySnippet(HardwarePreviewWiringConfig config)
+        public static string GenerateLibrarySnippet(HardwarePreviewWiringConfig config, int baudRate = 115200)
         {
             var sb = new StringBuilder();
             sb.AppendLine("// === Hexprite Live Hardware Preview Integration ===");
@@ -258,6 +259,7 @@ namespace Hexprite.Services
             sb.AppendLine("HexpritePreview hexpritePreview;");
             sb.AppendLine();
             sb.AppendLine("void setup() {");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  Serial.begin({baudRate});");
             if (config.InterfaceType == "I2C" && !config.UseSoftwareI2c)
             {
                 sb.AppendLine("  // Remap I2C pins if supported:");

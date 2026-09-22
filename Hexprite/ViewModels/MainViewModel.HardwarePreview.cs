@@ -334,11 +334,18 @@ namespace Hexprite.ViewModels
             get => _hardwarePreview.BaudRate;
             set
             {
-                if (_hardwarePreview.BaudRate != value)
+                bool baudChanged = _hardwarePreview.BaudRate != value;
+                var prefs = UserPreferencesService.Get();
+                bool prefsNeedUpdate = prefs.HardwarePreviewBaudRate != value;
+
+                if (baudChanged || prefsNeedUpdate)
                 {
                     _hardwarePreview.BaudRate = value;
                     OnPropertyChanged();
-                    UserPreferencesService.Update(p => p.HardwarePreviewBaudRate = value);
+                    if (prefsNeedUpdate)
+                    {
+                        UserPreferencesService.Update(p => p.HardwarePreviewBaudRate = value);
+                    }
                     HardwarePreviewSketchGenerator.UpdateStandaloneSketchInAppData(HardwarePreviewWiringConfig, value);
                     if (IsHardwarePreviewEnabled) TriggerHardwarePreviewUpdate();
                 }

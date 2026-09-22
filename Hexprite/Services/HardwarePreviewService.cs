@@ -489,7 +489,8 @@ namespace Hexprite.Services
                         if (portSnapshot != null && portSnapshot.IsOpen)
                         {
                             using var writeCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, portToken);
-                            writeCts.CancelAfter(1000);
+                            int writeTimeoutMs = CalculateWriteTimeout(packet.Length, portSnapshot.BaudRate);
+                            writeCts.CancelAfter(writeTimeoutMs);
 
                             await portSnapshot.BaseStream.WriteAsync(packet.AsMemory(), writeCts.Token);
                             LastFrameSentUtc = DateTime.UtcNow;
@@ -673,6 +674,7 @@ namespace Hexprite.Services
                         _ackScanner.Reset();
                         LastDisableReason = null;
                         _ackWatchdogTimer = new Timer(AckWatchdogTick, state: null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+                        RequeuePendingSnapshot();
                     }
 
                     // Dedicated asynchronous background read loop directly on BaseStream
@@ -796,10 +798,12 @@ namespace Hexprite.Services
                 _ => 1
             };
 
-            // If 1x, TopLeft, and no target display dimension mapping, send original
+            // If 1x, TopLeft, and no target display dimension mapping, send clone to decouple from localBuffer
             if (scale == 1 && placement == HardwarePreviewPlacement.TopLeft && (targetW <= 0 || (srcW == targetW && srcH == targetH)))
             {
-                return (srcPixels, srcW, srcH);
+                bool[] clone = new bool[srcW * srcH];
+                Array.Copy(srcPixels, clone, clone.Length);
+                return (clone, srcW, srcH);
             }
 
             int outW = targetW > 0 ? targetW : srcW * scale;
@@ -842,6 +846,29 @@ namespace Hexprite.Services
             }
 
             return (dest, outW, outH);
+        }
+
+        public static int CalculateWriteTimeout(int packetSize, int baudRate)
+        {
+            if (baudRate <= 0) baudRate = 115200;
+            // 10 bits per byte (1 start + 8 data + 1 stop)
+            // Duration in ms = (packetSize * 10 * 1000) / baudRate
+            long rawDurationMs = ((long)packetSize * 10000L) / baudRate;
+            // Provide 2x safety margin + 500ms baseline buffer, clamped to at least 1000ms
+            int timeout = (int)(rawDurationMs * 2 + 500);
+            return Math.Max(1000, timeout);
+        }
+
+        internal bool RequeuePendingSnapshot()
+        {
+            lock (_snapshotLock)
+            {
+                if (_snapshotWidth > 0 && _snapshotHeight > 0 && _snapshotBuffer != null)
+                {
+                    return _frameChannel.Writer.TryWrite(0);
+                }
+            }
+            return false;
         }
 
         public void Dispose()

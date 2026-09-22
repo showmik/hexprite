@@ -215,6 +215,11 @@ namespace Hexprite.Core
 
             if (InterfaceType == "I2C")
             {
+                if (string.Equals(DisplayModel?.Trim(), "ST7920 128x64", StringComparison.OrdinalIgnoreCase))
+                {
+                    return (false, null, "ST7920 128x64 does not support I2C. Please select SPI interface.");
+                }
+
                 if (string.IsNullOrWhiteSpace(SdaPin))
                     return (false, null, "SDA pin cannot be empty.");
                 if (string.IsNullOrWhiteSpace(SclPin))

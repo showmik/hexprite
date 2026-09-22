@@ -2083,7 +2083,15 @@ namespace Hexprite.ViewModels
 
             ToggleHardwarePreviewConnectionCommand = new RelayCommand(() =>
             {
-                IsHardwarePreviewEnabled = !IsHardwarePreviewEnabled;
+                if (_hardwarePreview.ConnectionState == HardwarePreviewConnectionState.Error)
+                {
+                    _hardwarePreview.IsEnabled = false;
+                    IsHardwarePreviewEnabled = true;
+                }
+                else
+                {
+                    IsHardwarePreviewEnabled = !IsHardwarePreviewEnabled;
+                }
             });
 
             ToggleTroubleshootingCommand = new RelayCommand(() =>

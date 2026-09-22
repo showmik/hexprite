@@ -334,5 +334,54 @@ namespace Hexprite.Tests
                 }
             }
         }
+
+        [Fact]
+        public void CalculateWriteTimeout_DynamicallyScalesWithBaudRateAndPacketSize()
+        {
+            // 1031 bytes at 9600 baud takes 1074ms raw transmission time
+            int timeout9600 = HardwarePreviewService.CalculateWriteTimeout(1031, 9600);
+            Assert.True(timeout9600 >= 2000, $"Timeout at 9600 baud should be >= 2000ms, was {timeout9600}ms");
+
+            // 8200 bytes at 57600 baud takes 1423ms raw transmission time
+            int timeoutMega = HardwarePreviewService.CalculateWriteTimeout(8200, 57600);
+            Assert.True(timeoutMega >= 2500, $"Timeout at 57600 baud for 8200B should be >= 2500ms, was {timeoutMega}ms");
+
+            // 1031 bytes at 115200 baud is fast, should be at least minimum baseline (>= 1000ms)
+            int timeoutFast = HardwarePreviewService.CalculateWriteTimeout(1031, 115200);
+            Assert.True(timeoutFast >= 1000, $"Timeout at 115200 baud should be >= 1000ms, was {timeoutFast}ms");
+        }
+
+        [Fact]
+        public void RequeuePendingSnapshot_WhenSnapshotExists_PushesToChannel()
+        {
+            // Initially no frame
+            Assert.False(_service.RequeuePendingSnapshot());
+
+            // Send a frame
+            _service.SendFrame(new bool[100], 10, 10);
+
+            // Now snapshot exists, requeuing should succeed
+            Assert.True(_service.RequeuePendingSnapshot());
+        }
+
+        [Fact]
+        public void TransformFrame_1x_TopLeft_ReturnsDecoupledClone()
+        {
+            _service.Placement = HardwarePreviewPlacement.TopLeft;
+            _service.Scale = HardwarePreviewScale.Scale1x;
+            _service.TargetDisplaySize = (16, 16);
+
+            bool[] src = new bool[16 * 16];
+            src[0] = true;
+
+            var (transformed, outW, outH) = _service.TransformFrame(src, 16, 16);
+
+            Assert.NotSame(src, transformed);
+            Assert.True(transformed[0]);
+
+            // Mutating src must NOT mutate transformed (BUG-13)
+            src[0] = false;
+            Assert.True(transformed[0]);
+        }
     }
 }

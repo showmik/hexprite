@@ -353,12 +353,18 @@ namespace Hexprite.ViewModels
 
             if (_canvasWidth > 0 && _canvasHeight > 0)
             {
-                int dataSize = ((_canvasWidth + 7) / 8) * _canvasHeight;
+                var (targetW, targetH) = HardwarePreviewWiringConfig.GetDisplayDimensions(SelectedDisplayModel);
+                int outW = targetW > 0 ? targetW : _canvasWidth;
+                int outH = targetH > 0 ? targetH : _canvasHeight;
+                if (outW < _canvasWidth) outW = _canvasWidth;
+                if (outH < _canvasHeight) outH = _canvasHeight;
+
+                int dataSize = ((outW + 7) / 8) * outH;
                 int totalPacketSize = 6 + dataSize + 1;
                 int maxBuffer = HardwarePreviewWiringConfig.GetMaxBufferSize(SelectedBoardPreset);
                 if (totalPacketSize > maxBuffer)
                 {
-                    CanvasBufferWarning = $"⚠ Current canvas ({_canvasWidth}×{_canvasHeight}, requires {totalPacketSize:N0} B) exceeds {SelectedBoardPreset}'s RAM buffer ({maxBuffer:N0} B). Resize canvas or select Mega/ESP32.";
+                    CanvasBufferWarning = $"⚠ Output frame ({outW}×{outH}, requires {totalPacketSize:N0} B) exceeds {SelectedBoardPreset}'s RAM buffer ({maxBuffer:N0} B). Resize canvas or select Mega/ESP32.";
                 }
                 else
                 {
@@ -378,7 +384,7 @@ namespace Hexprite.ViewModels
             }
 
             GeneratedSketch = HardwarePreviewSketchGenerator.GenerateArduinoSketch(cfg, SelectedBaudRate);
-            GeneratedSnippet = HardwarePreviewSketchGenerator.GenerateLibrarySnippet(cfg);
+            GeneratedSnippet = HardwarePreviewSketchGenerator.GenerateLibrarySnippet(cfg, SelectedBaudRate);
             GeneratedPlatformIOConfig = HardwarePreviewSketchGenerator.GeneratePlatformIOConfig(cfg, SelectedBaudRate);
             GeneratedPlatformIOIni = HardwarePreviewSketchGenerator.GeneratePlatformIOIni(cfg.BoardPreset, SelectedBaudRate);
         }
@@ -508,9 +514,9 @@ namespace Hexprite.ViewModels
 
             int w = _canvasWidth > 0 ? _canvasWidth : 128;
             int h = _canvasHeight > 0 ? _canvasHeight : 64;
-            bool[] probePixels = _hardwarePreview.LastTransmittedFrame.Pixels ?? new bool[w * h];
-            int probeW = _hardwarePreview.LastTransmittedFrame.Width > 0 ? _hardwarePreview.LastTransmittedFrame.Width : w;
-            int probeH = _hardwarePreview.LastTransmittedFrame.Height > 0 ? _hardwarePreview.LastTransmittedFrame.Height : h;
+            bool[] probePixels = new bool[w * h];
+            int probeW = w;
+            int probeH = h;
 
             try
             {

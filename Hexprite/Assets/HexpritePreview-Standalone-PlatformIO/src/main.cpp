@@ -156,21 +156,21 @@ void loop() {
       // We need at least 6 bytes to compute payload size
       // Header(2) + Width_L(1) + Width_H(1) + Height_L(1) + Height_H(1)
       if (bufferIndex >= 6) {
-        int w = buffer[2] | (buffer[3] << 8);   // Little-endian 16-bit width
-        int h = buffer[4] | (buffer[5] << 8);   // Little-endian 16-bit height
-        int dataSize = ((w + 7) / 8) * h;
-        int totalSize = 6 + dataSize + 1;        // Header(2) + W(2) + H(2) + Data + Checksum(1)
+        uint16_t w = (uint16_t)(buffer[2] | (buffer[3] << 8));   // Little-endian 16-bit width
+        uint16_t h = (uint16_t)(buffer[4] | (buffer[5] << 8));   // Little-endian 16-bit height
+        uint32_t dataSize = ((uint32_t)(w + 7) / 8) * (uint32_t)h;
+        uint32_t totalSize = 6 + dataSize + 1;        // Header(2) + W(2) + H(2) + Data + Checksum(1)
 
-        if (totalSize > MAX_BUFFER || w <= 0 || h <= 0) {
+        if (totalSize > (uint32_t)MAX_BUFFER || w == 0 || h == 0) {
           packetStarted = false;
           bufferIndex = 0;
           continue;
         }
 
-        if (bufferIndex == totalSize) {
+        if ((uint32_t)bufferIndex == totalSize) {
           // Full packet received — verify XOR checksum
           uint8_t checksum = 0;
-          for (int i = 0; i < totalSize - 1; i++) {
+          for (uint32_t i = 0; i < totalSize - 1; i++) {
             checksum ^= buffer[i];
           }
 

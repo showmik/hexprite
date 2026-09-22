@@ -629,6 +629,10 @@ namespace Hexprite.ViewModels
 
             _playbackFrameIndex = SpriteState.ActiveFrameIndex;
             UpdatePreviewSimulation(force: true);
+            if (IsHardwarePreviewEnabled)
+            {
+                TriggerHardwarePreviewUpdate();
+            }
         }
 
         private void PlaybackTimer_Tick(object? sender, EventArgs e)

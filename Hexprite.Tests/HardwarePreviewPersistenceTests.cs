@@ -326,6 +326,71 @@ namespace Hexprite.Tests
             Assert.True(vm.RefreshPortsCommand.CanExecute(null));
         }
 
+        [Fact]
+        public void HardwarePreviewBaudRate_Setter_UpdatesPreferences_EvenIfUnderlyingServiceMatches()
+        {
+            var hwMock = new Mock<IHardwarePreviewService>();
+            hwMock.SetupProperty(h => h.BaudRate);
+            var vm = CreateTestMainViewModel(hwMock.Object);
+
+            vm.HardwarePreviewBaudRate = 9600;
+            Assert.Equal(9600, UserPreferencesService.Get().HardwarePreviewBaudRate);
+            Assert.Equal(9600, hwMock.Object.BaudRate);
+
+            // Simulate auto-detect probe: underlying service is set to candidate (e.g. 57600)
+            hwMock.Object.BaudRate = 57600;
+
+            // Now auto-detect finishes and sets vm.HardwarePreviewBaudRate = 57600
+            vm.HardwarePreviewBaudRate = 57600;
+
+            // Preferences must still be updated to 57600
+            Assert.Equal(57600, UserPreferencesService.Get().HardwarePreviewBaudRate);
+        }
+
+        [Fact]
+        public void ToggleHardwarePreviewConnection_InErrorState_ReenablesPreview()
+        {
+            var hwMock = new Mock<IHardwarePreviewService>();
+            hwMock.SetupProperty(h => h.IsEnabled, true);
+            hwMock.Setup(h => h.ConnectionState).Returns(HardwarePreviewConnectionState.Error);
+            var vm = CreateTestMainViewModel(hwMock.Object);
+
+            Assert.Equal("⚡ Reconnect", vm.HardwarePreviewConnectionButtonText);
+
+            // Reconnect click
+            vm.ToggleHardwarePreviewConnectionCommand.Execute(null);
+
+            // Should remain enabled (reconnecting), NOT toggled off
+            Assert.True(vm.IsHardwarePreviewEnabled);
+        }
+
+        [Fact]
+        public void StopPlayback_WhenHardwarePreviewEnabled_TriggersHardwareUpdate()
+        {
+            var hwMock = new Mock<IHardwarePreviewService>();
+            hwMock.SetupProperty(h => h.IsEnabled, true);
+            var vm = CreateTestMainViewModel(hwMock.Object);
+
+            vm.AddFrameCommand.Execute(null);
+            Assert.Equal(2, vm.Frames.Count);
+
+            vm.IsHardwarePreviewEnabled = true;
+
+            // Start playback
+            vm.TogglePlaybackCommand.Execute(null);
+            Assert.True(vm.IsPlaying);
+
+            // Clear previous calls
+            hwMock.Invocations.Clear();
+
+            // Stop playback
+            vm.TogglePlaybackCommand.Execute(null);
+            Assert.False(vm.IsPlaying);
+
+            // Physical display should be updated with active frame
+            hwMock.Verify(h => h.SendFrame(It.IsAny<bool[]>(), It.IsAny<int>(), It.IsAny<int>()), Times.AtLeastOnce());
+        }
+
         private static MainViewModel CreateTestMainViewModel(IHardwarePreviewService hwPreview)
         {
             var codeGenMock = new Mock<ICodeGeneratorService>();

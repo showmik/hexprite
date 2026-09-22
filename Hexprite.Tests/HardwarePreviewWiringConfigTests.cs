@@ -687,5 +687,142 @@ namespace Hexprite.Tests
 
             Assert.Equal(HardwarePreviewConnectionState.Connecting, service.ConnectionState);
         }
+
+        [Fact]
+        public void LibrarySnippet_IncludesSerialBeginWithBaudRate()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                BoardPreset = "Arduino Uno / Nano",
+                InterfaceType = "I2C",
+                SdaPin = "A4",
+                SclPin = "A5"
+            };
+
+            string snippetDefault = HardwarePreviewSketchGenerator.GenerateLibrarySnippet(config);
+            Assert.Contains("Serial.begin(115200);", snippetDefault);
+
+            string snippetCustom = HardwarePreviewSketchGenerator.GenerateLibrarySnippet(config, 57600);
+            Assert.Contains("Serial.begin(57600);", snippetCustom);
+        }
+
+        [Fact]
+        public void SketchGenerator_SPI_EmptyRstPin_EmitsU8X8PinNone()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                BoardPreset = "ESP32 DevKit",
+                InterfaceType = "SPI",
+                CsPin = "5",
+                DcPin = "16",
+                RstPin = "",
+                ClkPin = "18",
+                MosiPin = "23",
+                DisplayModel = "SSD1306 128x64"
+            };
+
+            string sketch = HardwarePreviewSketchGenerator.GenerateArduinoSketch(config, 115200);
+            Assert.Contains("#define SPI_RST_PIN   U8X8_PIN_NONE", sketch);
+        }
+
+        [Fact]
+        public void Validation_ST7920WithI2C_ReturnsError()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                DisplayModel = "ST7920 128x64",
+                InterfaceType = "I2C",
+                SdaPin = "A4",
+                SclPin = "A5"
+            };
+
+            var result = config.Validate();
+            Assert.False(result.IsValid);
+            Assert.NotNull(result.Error);
+            Assert.Contains("ST7920 128x64 does not support I2C", result.Error);
+        }
+
+        [Fact]
+        public void StandaloneSketchTemplate_ContainsSoftwareI2cConstructors()
+        {
+            string templatePath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Hexprite", "Assets", "HexpritePreview-Standalone-Arduino", "HexpritePreview-Standalone-Arduino.ino"));
+            Assert.True(File.Exists(templatePath), $"File should exist at {templatePath}");
+            string content = File.ReadAllText(templatePath);
+            Assert.Contains("#if defined(USE_SOFTWARE_I2C)", content);
+            Assert.Contains("U8G2_SSD1306_128X64_NONAME_F_SW_I2C", content);
+        }
+
+        [Fact]
+        public void FirmwareFiles_UseUint32ForPacketSize()
+        {
+            string baseDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "Hexprite", "Assets"));
+            string cppPath = Path.Combine(baseDir, "HexpritePreview", "src", "HexpritePreview.cpp");
+            string inoPath = Path.Combine(baseDir, "HexpritePreview-Standalone-Arduino", "HexpritePreview-Standalone-Arduino.ino");
+            string pioPath = Path.Combine(baseDir, "HexpritePreview-Standalone-PlatformIO", "src", "main.cpp");
+
+            Assert.True(File.Exists(cppPath), $"File should exist at {cppPath}");
+            Assert.True(File.Exists(inoPath), $"File should exist at {inoPath}");
+            Assert.True(File.Exists(pioPath), $"File should exist at {pioPath}");
+
+            string cpp = File.ReadAllText(cppPath);
+            string ino = File.ReadAllText(inoPath);
+            string pio = File.ReadAllText(pioPath);
+
+            Assert.Contains("uint32_t dataSize", cpp);
+            Assert.Contains("uint32_t totalSize", cpp);
+
+            Assert.Contains("uint32_t dataSize", ino);
+            Assert.Contains("uint32_t totalSize", ino);
+
+            Assert.Contains("uint32_t dataSize", pio);
+            Assert.Contains("uint32_t totalSize", pio);
+        }
+
+        [Fact]
+        public void CanvasBufferWarning_ConsidersTargetDisplayDimensions()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                BoardPreset = "Arduino Uno / Nano",
+                DisplayModel = "SSD1327 128x128", // 128x128 = 2048 bytes > 1040 buffer
+                InterfaceType = "SPI",
+                CsPin = "10",
+                DcPin = "9",
+                ClkPin = "13",
+                MosiPin = "11"
+            };
+
+            // Canvas is small (16x16), but target display is 128x128 which exceeds Uno's 1040B buffer
+            var vm = new HardwarePreviewWiringViewModel(config, 115200, canvasWidth: 16, canvasHeight: 16);
+
+            Assert.True(vm.HasCanvasBufferWarning);
+            Assert.NotNull(vm.CanvasBufferWarning);
+            Assert.Contains("exceeds", vm.CanvasBufferWarning);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task AutoDetectBaudRate_ProbesWithRawCanvasDimensions_NotDoubleScaled()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                BoardPreset = "Arduino Uno / Nano",
+                DisplayModel = "SSD1306 128x64"
+            };
+
+            var hwMock = new Moq.Mock<IHardwarePreviewService>();
+            hwMock.SetupProperty(h => h.IsEnabled, true);
+            hwMock.SetupProperty(h => h.BaudRate, 115200);
+            // Simulate that LastTransmittedFrame has transformed dimensions (128x64)
+            hwMock.SetupGet(h => h.LastTransmittedFrame).Returns((new bool[128 * 64], 128, 64));
+
+            // Canvas is 16x16
+            var vm = new HardwarePreviewWiringViewModel(config, 115200, canvasWidth: 16, canvasHeight: 16, hardwarePreview: hwMock.Object);
+
+            await vm.AutoDetectBaudRateCommand.ExecuteAsync(null);
+
+            // Must probe with raw canvas dimensions (16, 16), NOT the already-transformed (128, 64)
+            hwMock.Verify(h => h.SendFrame(Moq.It.IsAny<bool[]>(), 16, 16), Moq.Times.AtLeastOnce());
+            hwMock.Verify(h => h.SendFrame(Moq.It.IsAny<bool[]>(), 128, 64), Moq.Times.Never());
+        }
     }
 }

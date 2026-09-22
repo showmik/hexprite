@@ -171,23 +171,23 @@ void HexpritePreview::processByte(uint8_t b, Stream& source)
         return;
     }
 
-    int w = _buffer[2] | (_buffer[3] << 8);
-    int h = _buffer[4] | (_buffer[5] << 8);
-    int dataSize = ((w + 7) / 8) * h;
-    int totalSize = 6 + dataSize + 1;
+    uint16_t w = (uint16_t)(_buffer[2] | (_buffer[3] << 8));
+    uint16_t h = (uint16_t)(_buffer[4] | (_buffer[5] << 8));
+    uint32_t dataSize = ((uint32_t)(w + 7) / 8) * (uint32_t)h;
+    uint32_t totalSize = 6 + dataSize + 1;
 
-    if (totalSize > _bufferSize || w <= 0 || h <= 0) {
+    if (totalSize > (uint32_t)_bufferSize || w == 0 || h == 0) {
         _invalidPackets++;
         resetPacket();
         return;
     }
 
-    if (_bufferIndex != totalSize) {
+    if ((uint32_t)_bufferIndex != totalSize) {
         return;
     }
 
     uint8_t checksum = 0;
-    for (int i = 0; i < totalSize - 1; i++) {
+    for (uint32_t i = 0; i < totalSize - 1; i++) {
         checksum ^= _buffer[i];
     }
 
