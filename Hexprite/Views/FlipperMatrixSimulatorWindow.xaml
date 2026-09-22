@@ -1,0 +1,696 @@
+<Window x:Class="Hexprite.Views.FlipperMatrixSimulatorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Flipper Dolphin Matrix &amp; Mood Simulator"
+        Width="1040" Height="820"
+        MinWidth="960" MinHeight="720"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Hexprite;component/Themes/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <BooleanToVisibilityConverter x:Key="BoolToVis" />
+            <FontFamily x:Key="Font.Primary">Segoe UI</FontFamily>
+            <FontFamily x:Key="Font.Code">Consolas</FontFamily>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource MainWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" /> <!-- 0: TITLE BAR -->
+                <RowDefinition Height="Auto" /> <!-- 1: TOP ACTION COMMAND BAR -->
+                <RowDefinition Height="*" />    <!-- 2: MAIN WORKSPACE CONTENT -->
+                <RowDefinition Height="Auto" /> <!-- 3: BOTTOM STATUS BAR -->
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 0: WINDOW TITLE BAR
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,0,0,1">
+                <Grid Height="34">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0" IsHitTestVisible="False">
+                        <!-- Flipper Dolphin Vector Icon -->
+                        <Path Data="M3,12 C4,9 7,6 11,5 C14,4 17,6 18,9 C19,12 16,15 13,15 C10,15 9,17 7,18 C6,19 4,18 4,16 C4,15 5,14 4,13 Z"
+                              Fill="{DynamicResource Brush.Accent.Base}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Flipper Dolphin Matrix &amp; Mood Simulator"
+                                   Foreground="{DynamicResource Brush.Text.Primary}"
+                                   FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PackName}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close (Esc)" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 1: TOP ACTION COMMAND BAR (Replaces sprawling bottom buttons)
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,0,0,1" Padding="12,6">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Groups: Pack Management & Deployment -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Pack File Group -->
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding LoadPackFileCommand}" ToolTip="Open .hexpack document or .zip archive">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="📦" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Open Pack" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding LoadPackFolderCommand}" ToolTip="Import animation folders or images">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="📁" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Import Folder" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding SaveAsHexpackCommand}" ToolTip="Save pack to disk (.hexpack)">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="💾" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Save .hexpack" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,8,0" Command="{Binding OpenInAssetPackStudioCommand}" ToolTip="Switch to Asset Pack Studio editor tab in workspace">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="🐬" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Studio" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- Subtle Divider -->
+                        <Rectangle Width="1" Height="18" Fill="{DynamicResource Brush.Border.Separator}" Margin="2,0,8,0" VerticalAlignment="Center"/>
+
+                        <!-- Hardware Group -->
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding FlashUsbCommand}" ToolTip="Deploy whole pack directly to Flipper Zero via USB">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="⚡" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Flash (USB)" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding OpenLiveMirrorCommand}" ToolTip="Stream live animation directly to connected Flipper Zero screen">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="📡" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Live Mirror" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Right Group: Tools & Studio Utilities -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,4,0" Command="{Binding ExportGifCommand}" ToolTip="Export animated GIF of active animation">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="🎬" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="GIF..." FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                        <Button Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Command="{Binding OpenInTabsCommand}" ToolTip="Open all animations as individual workspace tabs">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="📂" FontSize="11" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="In Tabs" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 2: MAIN SPLIT CONTENT AREA
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="2" Margin="14,10,14,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="470" MinWidth="420"/>
+                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="*" MinWidth="360"/>
+                </Grid.ColumnDefinitions>
+
+                <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent" Cursor="SizeWE"/>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     LEFT COLUMN: Console, Transport & Interactive Inspector
+                     ───────────────────────────────────────────────────────── -->
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
+                    <StackPanel>
+                        <!-- CARD 1: Virtual Flipper Hardware Console Frame -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                            <StackPanel>
+                                <!-- Screen Top Header: Status Badge & Palette Selector -->
+                                <Grid Margin="0,0,0,8">
+                                    <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Left">
+                                        <TextBlock x:Name="TxtStateBadge" Text="{Binding StateBadgeText}" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <TextBlock Text="Theme:" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <ComboBox x:Name="CboPalette" Style="{StaticResource ModernComboBoxStyle}" Width="155" Height="24"
+                                                  ItemsSource="{Binding ThemePalettes}"
+                                                  SelectedIndex="{Binding SelectedPaletteIndex, Mode=TwoWay}">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Border Width="12" Height="12" CornerRadius="2" Background="{Binding BackgroundBrush}" BorderBrush="{Binding ForegroundBrush}" BorderThickness="1" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="10" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Virtual Screen Bezel: 3x integer scaling (384x192) -->
+                                <Border Background="{DynamicResource Brush.Surface.Base}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="3" CornerRadius="4" HorizontalAlignment="Center" Padding="0">
+                                    <Image x:Name="ImgFlipperScreen" Source="{Binding ScreenBitmap}" Width="384" Height="192" RenderOptions.BitmapScalingMode="NearestNeighbor" Stretch="Fill"
+                                           MouseLeftButtonDown="ImgFlipperScreen_MouseLeftButtonDown"
+                                           MouseMove="ImgFlipperScreen_MouseMove"
+                                           MouseLeftButtonUp="ImgFlipperScreen_MouseLeftButtonUp"
+                                           Cursor="Hand"/>
+                                </Border>
+
+                                <!-- Screen Sub-Bezel Controls: Speed & Display Options -->
+                                <Grid Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="Speed:" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <RadioButton x:Name="RbSpeedHalf" Content="0.5x" GroupName="SimSpeed" Style="{StaticResource ChipButtonStyle}" Margin="0,0,3,0" Checked="SpeedChip_Checked"/>
+                                        <RadioButton x:Name="RbSpeed1x" Content="1x" GroupName="SimSpeed" IsChecked="True" Style="{StaticResource ChipButtonStyle}" Margin="0,0,3,0" Checked="SpeedChip_Checked"/>
+                                        <RadioButton x:Name="RbSpeed2x" Content="2x" GroupName="SimSpeed" Style="{StaticResource ChipButtonStyle}" Checked="SpeedChip_Checked"/>
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                        <CheckBox x:Name="ChkLcdGrid" Content="LCD Grid" IsChecked="{Binding ShowLcdGrid, Mode=TwoWay}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" Margin="0,0,10,0"/>
+                                        <CheckBox x:Name="ChkDesktopHud" Content="HUD Overlay" IsChecked="{Binding ShowDesktopHud, Mode=TwoWay}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Drag Hint Subtitle -->
+                                <TextBlock Text="💡 Tip: Click &amp; drag speech bubble on virtual screen • Space: Play/Pause • Enter: Active"
+                                           Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- CARD 2: Timeline Scrubber & Playback Transport -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                            <StackPanel>
+                                <!-- Scrubber Header: Label & Frame Counter Badge -->
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="Timeline Scrubber" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold"/>
+                                    <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" HorizontalAlignment="Right">
+                                        <TextBlock x:Name="TxtFrameCounter" Text="{Binding FrameCounterText}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold"/>
+                                    </Border>
+                                </Grid>
+                                <Slider x:Name="SliderScrubber" Minimum="0"
+                                        Maximum="{Binding MaxSequenceIndex}"
+                                        Value="{Binding SequenceIndex, Mode=TwoWay}"
+                                        SmallChange="1" LargeChange="1" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,8"/>
+
+                                <!-- Transport Navigation Toolbar -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="34"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="125"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Reset to Frame 0 -->
+                                    <Button Grid.Column="0" x:Name="BtnReset" ToolTip="Reset to Passive Frame 0 (R)" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="0" Command="{Binding ResetCommand}">
+                                        <Path Data="M 8,3 L 2,8 L 8,13 Z M 14,3 L 8,8 L 14,13 Z" Fill="{DynamicResource Brush.Text.Primary}" Width="12" Height="12" Stretch="Uniform"/>
+                                    </Button>
+
+                                    <!-- Step Back -->
+                                    <Button Grid.Column="2" x:Name="BtnStepBack" ToolTip="Previous Frame (Left Arrow)" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="0" Command="{Binding StepBackCommand}">
+                                        <Path Data="M 3,3 H 5 V 13 H 3 Z M 13,3 L 5,8 L 13,13 Z" Fill="{DynamicResource Brush.Text.Primary}" Width="12" Height="12" Stretch="Uniform"/>
+                                    </Button>
+                                    
+                                    <!-- Play / Pause -->
+                                    <Button Grid.Column="4" x:Name="BtnPlayPause" Style="{StaticResource AccentButtonStyle}" Height="28" Padding="6,2" Command="{Binding PlayPauseCommand}" ToolTip="{Binding PlayPauseToolTip}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Path x:Name="IconPlayPause" Data="{Binding PlayPauseIconData}" Fill="{DynamicResource Brush.Accent.Foreground}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                            <TextBlock x:Name="TxtPlayPause" Text="{Binding PlayPauseText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Foreground}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    
+                                    <!-- Step Forward -->
+                                    <Button Grid.Column="6" x:Name="BtnStepForward" ToolTip="Next Frame (Right Arrow)" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="0" Command="{Binding StepForwardCommand}">
+                                        <Path Data="M 11,3 H 13 V 13 H 11 Z M 3,3 L 11,8 L 3,13 Z" Fill="{DynamicResource Brush.Text.Primary}" Width="12" Height="12" Stretch="Uniform"/>
+                                    </Button>
+                                    
+                                    <!-- Play Active Trigger -->
+                                    <Button Grid.Column="8" x:Name="BtnTriggerActive" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="8,2" Command="{Binding TriggerActiveCommand}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <Path Data="M 9,1 L 2,9 H 8 L 7,15 L 14,7 H 8 Z" Fill="{DynamicResource Brush.Accent.Base}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Play Active" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- CARD 3: Interactive Inspector Tabs (Speech Bubble vs Hardware D-Pad) -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12">
+                            <TabControl Background="Transparent" BorderThickness="0" Padding="0" SelectedIndex="{Binding SelectedInspectorTabIndex, Mode=TwoWay}">
+                                <TabControl.Resources>
+                                    <Style TargetType="TabItem">
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="TabItem">
+                                                    <Border x:Name="TabBorder" Padding="12,5" Margin="0,0,4,0" Background="Transparent" CornerRadius="5,5,0,0" BorderBrush="Transparent" BorderThickness="0,0,0,2">
+                                                        <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Brush.Surface.Active}"/>
+                                                            <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource Brush.Accent.Base}"/>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                                                            <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="False">
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}"/>
+                                                        </Trigger>
+                                                        <MultiTrigger>
+                                                            <MultiTrigger.Conditions>
+                                                                <Condition Property="IsSelected" Value="False"/>
+                                                                <Condition Property="IsMouseOver" Value="True"/>
+                                                            </MultiTrigger.Conditions>
+                                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                                                            <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource Brush.Surface.Hover}"/>
+                                                        </MultiTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </TabControl.Resources>
+
+                                <!-- TAB 1: 💬 Speech Bubble Editor -->
+                                <TabItem Header="💬 Speech Bubble">
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- Row 0: Enable CheckBox & Anchor Preset Buttons -->
+                                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                                            <CheckBox x:Name="ChkSpeechBubble" Content="Enable Speech Bubble Overlay" IsChecked="{Binding ShowSpeechBubble, Mode=TwoWay}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <TextBlock Text="Anchors:" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Border Background="{DynamicResource Brush.Surface.Base}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="4" Padding="2">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Button Content="↖ TL" ToolTip="Align Top-Left" Style="{StaticResource ModernButtonStyle}" Height="20" Padding="5,0" Margin="0,0,2,0" FontSize="9" Command="{Binding SetBubbleAlignmentCommand}" CommandParameter="TL"/>
+                                                        <Button Content="↗ TR" ToolTip="Align Top-Right" Style="{StaticResource ModernButtonStyle}" Height="20" Padding="5,0" Margin="0,0,2,0" FontSize="9" Command="{Binding SetBubbleAlignmentCommand}" CommandParameter="TR"/>
+                                                        <Button Content="↙ BL" ToolTip="Align Bottom-Left" Style="{StaticResource ModernButtonStyle}" Height="20" Padding="5,0" Margin="0,0,2,0" FontSize="9" Command="{Binding SetBubbleAlignmentCommand}" CommandParameter="BL"/>
+                                                        <Button Content="↘ BR" ToolTip="Align Bottom-Right" Style="{StaticResource ModernButtonStyle}" Height="20" Padding="5,0" FontSize="9" Command="{Binding SetBubbleAlignmentCommand}" CommandParameter="BR"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Row 1: Text Input Box & Tail Selector -->
+                                        <Grid Grid.Row="1" Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="8"/>
+                                                <ColumnDefinition Width="120"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBox x:Name="TxtCustomBubble" Style="{StaticResource ModernTextBoxStyle}"
+                                                     Text="{Binding CustomBubbleText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     AcceptsReturn="True" TextWrapping="Wrap" MinHeight="28" MaxHeight="60"
+                                                     VerticalScrollBarVisibility="Auto" VerticalContentAlignment="Top" Padding="6,4"/>
+                                            <ComboBox Grid.Column="2" x:Name="CboBubbleTail" Style="{StaticResource ModernComboBoxStyle}" Height="28" VerticalAlignment="Top"
+                                                      SelectedIndex="{Binding BubbleTailIndex, Mode=TwoWay}">
+                                                <ComboBoxItem Content="↙ Bottom-Left" IsSelected="True"/>
+                                                <ComboBoxItem Content="↘ Bottom-Right"/>
+                                                <ComboBoxItem Content="↖ Top-Left"/>
+                                                <ComboBoxItem Content="↗ Top-Right"/>
+                                                <ComboBoxItem Content="⊘ None"/>
+                                            </ComboBox>
+                                        </Grid>
+
+                                        <!-- Row 2: Coordinate Position Sliders & Value Badges -->
+                                        <Grid Grid.Row="2" Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="12"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="X Coordinate" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10"/>
+                                                    <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1" HorizontalAlignment="Right">
+                                                        <TextBlock x:Name="TxtBubbleXVal" Text="{Binding BubbleX, StringFormat='X: {0}px'}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="9" FontWeight="Bold"/>
+                                                    </Border>
+                                                </Grid>
+                                                <Slider x:Name="SliderBubbleX" Minimum="0" Maximum="{Binding MaxBubbleX}" Value="{Binding BubbleX, Mode=TwoWay}" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <Grid Margin="0,0,0,2">
+                                                    <TextBlock Text="Y Coordinate" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10"/>
+                                                    <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1" HorizontalAlignment="Right">
+                                                        <TextBlock x:Name="TxtBubbleYVal" Text="{Binding BubbleY, StringFormat='Y: {0}px'}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="9" FontWeight="Bold"/>
+                                                    </Border>
+                                                </Grid>
+                                                <Slider x:Name="SliderBubbleY" Minimum="0" Maximum="{Binding MaxBubbleY}" Value="{Binding BubbleY, Mode=TwoWay}" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Row 3: Save Bubble Action & Drag Hint -->
+                                        <Grid Grid.Row="3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0" Content="💾 Save to Sprite" Style="{StaticResource ModernButtonStyle}" Height="24" Padding="10,0" FontSize="10" FontWeight="SemiBold" ToolTip="Persist speech bubble text and coordinates into active sprite metadata" Command="{Binding ApplyBubbleToSelectedCommand}"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding BubbleSavedFeedbackText}" Foreground="{DynamicResource Brush.Status.Success}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="💡 Tip: Drag bubble on screen to position" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="9" VerticalAlignment="Center" FontStyle="Italic"/>
+                                        </Grid>
+                                    </Grid>
+                                </TabItem>
+
+                                <!-- TAB 2: 🎮 Hardware D-Pad Remote -->
+                                <TabItem Header="🎮 D-Pad Remote">
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="14"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- D-Pad 3x3 Button Matrix -->
+                                        <Grid Grid.Column="0" Width="84" Height="84">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="*"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- UP -->
+                                            <Button Grid.Row="0" Grid.Column="1" ToolTip="D-Pad UP (Happier Mood)" Style="{StaticResource ModernButtonStyle}" Padding="0" Command="{Binding TriggerUpCommand}">
+                                                <TextBlock Text="▲" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                            </Button>
+                                            <!-- LEFT -->
+                                            <Button Grid.Row="1" Grid.Column="0" ToolTip="D-Pad LEFT (Step Back)" Style="{StaticResource ModernButtonStyle}" Padding="0" Command="{Binding TriggerLeftCommand}">
+                                                <TextBlock Text="◀" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                            </Button>
+                                            <!-- OK (Center) -->
+                                            <Button Grid.Row="1" Grid.Column="1" ToolTip="D-Pad OK (Trigger Active Animation)" Style="{StaticResource AccentButtonStyle}" Padding="0" Command="{Binding TriggerOkCommand}">
+                                                <TextBlock Text="OK" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Foreground}"/>
+                                            </Button>
+                                            <!-- RIGHT -->
+                                            <Button Grid.Row="1" Grid.Column="2" ToolTip="D-Pad RIGHT (Step Forward)" Style="{StaticResource ModernButtonStyle}" Padding="0" Command="{Binding TriggerRightCommand}">
+                                                <TextBlock Text="▶" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                            </Button>
+                                            <!-- DOWN -->
+                                            <Button Grid.Row="2" Grid.Column="1" ToolTip="D-Pad DOWN (Angrier Mood)" Style="{StaticResource ModernButtonStyle}" Padding="0" Command="{Binding TriggerDownCommand}">
+                                                <TextBlock Text="▼" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                            </Button>
+                                        </Grid>
+
+                                        <!-- D-Pad Info & Actions -->
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                            <Grid Margin="0,0,0,4">
+                                                <TextBlock Text="Hardware D-Pad" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                                <TextBlock Text="{Binding LastButtonPressedText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Base}" HorizontalAlignment="Right"/>
+                                            </Grid>
+                                            <Button Style="{StaticResource ModernButtonStyle}" Height="24" Padding="8,0" Margin="0,2,0,0" ToolTip="BACK Button (Reset to Passive Loop)" Command="{Binding TriggerBackCommand}">
+                                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                    <TextBlock Text="↩️ BACK Button" FontSize="10" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <TextBlock Text="⌨️ Keyboard: Arrows / Enter / Esc" FontSize="9" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,4,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </TabItem>
+                            </TabControl>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- ─────────────────────────────────────────────────────────
+                     RIGHT COLUMN: Dolphin State & Animation Candidate List
+                     ───────────────────────────────────────────────────────── -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/> <!-- 0: DOLPHIN SIMULATION STATE CARD -->
+                        <RowDefinition Height="*"/>    <!-- 1: CANDIDATES LIST CARD -->
+                        <RowDefinition Height="Auto"/> <!-- 2: METADATA & CANVAS CARD -->
+                    </Grid.RowDefinitions>
+
+                    <!-- CARD 1: Unified Dolphin Simulation State -->
+                    <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                        <StackPanel>
+                            <!-- Level Slider Row -->
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock Text="Dolphin Level (1 to 30)" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold"/>
+                                <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" HorizontalAlignment="Right">
+                                    <TextBlock x:Name="TxtLevelVal" Text="{Binding LevelDescription}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                            <Slider x:Name="SliderLevel" Minimum="1" Maximum="30" Value="{Binding Level, Mode=TwoWay}" SmallChange="1" LargeChange="5" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,8"/>
+
+                            <!-- Mood Slider Row -->
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock Text="Mood / Butthurt (0: Happy → 14: Enraged)" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold"/>
+                                <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" HorizontalAlignment="Right">
+                                    <TextBlock x:Name="TxtMoodVal" Text="{Binding MoodDescription}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                            <Slider x:Name="SliderMood" Minimum="0" Maximum="14" Value="{Binding Mood, Mode=TwoWay}" SmallChange="1" LargeChange="2" IsSnapToTickEnabled="True" TickFrequency="1" Margin="0,0,0,8"/>
+
+                            <!-- Deadzone State Recovery Alert (Conditional) -->
+                            <Border Visibility="{Binding HasNoMatchingCandidates, Converter={StaticResource BoolToVis}}"
+                                    Background="{DynamicResource Brush.Surface.Control}" BorderBrush="{DynamicResource Brush.Status.Warning}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="⚠️ Uncovered State (0% match in current pack)" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Style="{StaticResource AccentButtonStyle}" Height="22" Padding="6,0" Command="{Binding JumpToNearestCoveredStateCommand}">
+                                        <TextBlock Text="🎯 Jump to State" FontSize="9" FontWeight="Bold"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+
+                            <!-- RNG Pick Simulation Row -->
+                            <Button Style="{StaticResource ModernButtonStyle}" Height="28" Command="{Binding RollRngCommand}" ToolTip="Simulate Flipper Zero random animation selector algorithm">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Path Data="M 2,2 H 14 V 14 H 2 Z M 5,5 A 1,1 0 1 1 5,5.01 M 11,5 A 1,1 0 1 1 11,5.01 M 8,8 A 1,1 0 1 1 8,8.01 M 5,11 A 1,1 0 1 1 5,11.01 M 11,11 A 1,1 0 1 1 11,11.01"
+                                          Fill="{DynamicResource Brush.Accent.Base}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Simulate Random Pick (RNG)" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                            <TextBlock Text="{Binding RngRollFeedbackText}" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="10" FontWeight="SemiBold" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- CARD 2: Candidate Animations List Card -->
+                    <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Header: Title & Filter Mode Selector -->
+                            <Grid Grid.Row="0" Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" x:Name="TxtCandidatesHeader" Text="{Binding CandidatesHeader}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" x:Name="CboCandidateMode" Height="22" Width="140" FontSize="10" Style="{StaticResource ModernComboBoxStyle}"
+                                          SelectedIndex="{Binding CandidateModeIndex, Mode=TwoWay}">
+                                    <ComboBoxItem Content="🎯 Filtered by L/M" Tag="Filtered" IsSelected="True"/>
+                                    <ComboBoxItem Content="📦 All Animations" Tag="All"/>
+                                </ComboBox>
+                            </Grid>
+
+                            <!-- Search Filter Bar -->
+                            <Grid Grid.Row="1" Margin="0,0,0,6">
+                                <TextBox Style="{StaticResource ModernTextBoxStyle}" Height="24" FontSize="11" VerticalContentAlignment="Center"
+                                         Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="🔍 Search animations..."/>
+                            </Grid>
+
+                            <!-- Animation Candidates ListBox -->
+                            <ListBox Grid.Row="2" x:Name="LstCandidates" Style="{StaticResource ModernListBoxStyle}"
+                                     ItemsSource="{Binding Candidates}"
+                                     SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
+                                     HorizontalContentAlignment="Stretch">
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Transparent"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Padding" Value="0"/>
+                                        <Setter Property="Margin" Value="0,2"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="ItemBorder"
+                                                            Background="{DynamicResource Brush.Surface.Control}"
+                                                            BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                                            BorderThickness="1"
+                                                            CornerRadius="6"
+                                                            Padding="10,8"
+                                                            SnapsToDevicePixels="True">
+                                                        <ContentPresenter HorizontalAlignment="Stretch"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Brush.Surface.Hover}"/>
+                                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource Brush.Border.Focus}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource Brush.Surface.Active}"/>
+                                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="{DynamicResource Brush.Accent.Base}"/>
+                                                            <Setter TargetName="ItemBorder" Property="BorderThickness" Value="1.5"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <!-- ROW 0: Name & Probability Pill -->
+                                            <Grid Grid.Row="0" Margin="0,0,0,5">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <TextBlock Text="🎬" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" Foreground="{DynamicResource Brush.Text.Primary}" FontWeight="Bold" FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <Border Grid.Column="1" Background="{DynamicResource Brush.Surface.Base}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding ProbabilitySummary}" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="11" FontWeight="Bold"/>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- ROW 1: Metadata Badges -->
+                                            <WrapPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+                                                <Border Background="{DynamicResource Brush.Surface.Base}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="3" Padding="5,1" Margin="0,0,5,0" ToolTip="Scheduled Level and Mood range">
+                                                    <TextBlock Text="{Binding LevelMoodSummary}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="9" FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Border Background="{DynamicResource Brush.Surface.Base}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="3" Padding="5,1" Margin="0,0,5,0" ToolTip="Frames and FPS">
+                                                    <TextBlock Text="{Binding FrameSummary}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="9" FontWeight="SemiBold"/>
+                                                </Border>
+                                                <Border Visibility="{Binding HasActiveFrames, Converter={StaticResource BoolToVis}}"
+                                                        Background="{DynamicResource Brush.Surface.Active}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="3" Padding="5,1" ToolTip="Active trigger cycle frames">
+                                                    <TextBlock Text="{Binding CycleSummary}" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="9" FontWeight="SemiBold"/>
+                                                </Border>
+                                            </WrapPanel>
+
+                                            <!-- ROW 2: Sleek Probability Progress Bar -->
+                                            <Border Grid.Row="2" Height="4" Background="{DynamicResource Brush.Surface.Base}" CornerRadius="2" ClipToBounds="True">
+                                                <ProgressBar Value="{Binding ProbabilityPercent}" Minimum="0" Maximum="100" Height="4" Foreground="{DynamicResource Brush.Accent.Base}" Background="Transparent" BorderThickness="0"/>
+                                            </Border>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Empty State Overlay Banner -->
+                            <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.Control}" BorderBrush="{DynamicResource Brush.Border.Separator}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,4"
+                                    Visibility="{Binding HasNoMatchingCandidates, Converter={StaticResource BoolToVis}}"
+                                    VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="⚠️ No Matching Animations" FontWeight="Bold" FontSize="11" Foreground="{DynamicResource Brush.Text.Primary}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
+                                    <TextBlock Text="No animations match current Level/Mood, or no pack loaded." FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,0,0,8"/>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <Button Style="{StaticResource ModernButtonStyle}" Height="24" Padding="8,0" Margin="0,0,6,0" Command="{Binding LoadPackFileCommand}" ToolTip="Open .hexpack or .zip file">
+                                            <TextBlock Text="📦 Load .hexpack" FontSize="10"/>
+                                        </Button>
+                                        <Button Style="{StaticResource ModernButtonStyle}" Height="24" Padding="8,0" Command="{Binding LoadPackFolderCommand}" ToolTip="Import animation folder">
+                                            <TextBlock Text="📁 Load Folder" FontSize="10"/>
+                                        </Button>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </Border>
+
+                    <!-- CARD 3: Selected Animation Metadata & Canvas Action -->
+                    <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="10">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,4">
+                                <TextBlock x:Name="TxtCurrentAnimTitle" Text="{Binding CurrentAnimTitle}" Foreground="{DynamicResource Brush.Text.Primary}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                <Button Content="🎨 Edit in Canvas" ToolTip="Open this animation's sprite frames in a workspace tab" Style="{StaticResource ModernButtonStyle}" Height="22" Padding="8,0" FontSize="9" HorizontalAlignment="Right" Command="{Binding NavigateToSelectedTabCommand}"/>
+                            </Grid>
+                            <TextBlock x:Name="TxtCurrentAnimDetails" Text="{Binding CurrentAnimDetails}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,1,0,2"/>
+                            <TextBlock x:Name="TxtCycleDetails" Text="{Binding CycleDetails}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 3: CLEAN BOTTOM STATUS BAR
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="3" Background="{DynamicResource Brush.Surface.MenuBar}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,1,0,0" Padding="14,10">
+                <Grid>
+                    <TextBlock x:Name="TxtManifestInfo" Text="{Binding ManifestInfo}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" VerticalAlignment="Center"/>
+                    <Button x:Name="BtnClose" Content="Close" Style="{StaticResource ModernButtonStyle}" Width="84" Height="28" Padding="14,0" HorizontalAlignment="Right" Click="CaptionClose_Click"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

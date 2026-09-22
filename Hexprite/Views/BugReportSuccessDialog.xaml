@@ -1,0 +1,119 @@
+<Window x:Class="Hexprite.Views.BugReportSuccessDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Report submitted"
+        Width="440"
+        SizeToContent="Height"
+        MinHeight="200"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"
+                               IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="46" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="TxtMessage"
+                           Grid.Row="0"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text.Primary}"
+                           Margin="0,0,0,8" />
+
+                <TextBlock x:Name="LblReportId"
+                           Grid.Row="1"
+                           Text="Reference ID"
+                           Foreground="{DynamicResource Brush.Text.Muted}"
+                           FontSize="12"
+                           Margin="0,0,0,4"
+                           Visibility="Collapsed" />
+
+                <TextBox x:Name="TxtReportId"
+                         Grid.Row="2"
+                         IsReadOnly="True"
+                         IsReadOnlyCaretVisible="True"
+                         MinHeight="32"
+                         VerticalContentAlignment="Center"
+                         FontFamily="{DynamicResource Font.Code}"
+                         Margin="0,0,0,4"
+                         Visibility="Collapsed" />
+
+                <TextBlock x:Name="TxtCopiedHint"
+                           Grid.Row="3"
+                           Text="Copied to clipboard."
+                           Foreground="{DynamicResource Brush.Accent.Base}"
+                           FontSize="11"
+                           Visibility="Collapsed"
+                           Margin="0,0,0,4" />
+
+                <StackPanel Grid.Row="4"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Margin="0,4,0,0">
+                    <Button x:Name="BtnCopyId"
+                            Content="Copy reference ID"
+                            MinWidth="150"
+                            MinHeight="30"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="CopyId_Click"
+                            Visibility="Collapsed" />
+                    <Button Content="Close"
+                            Width="90"
+                            MinHeight="30"
+                            Style="{StaticResource ModernButtonStyle}"
+                            IsDefault="True"
+                            IsCancel="True"
+                            Click="Close_Click" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Hexprite.Tests/Hexprite.Tests.csproj" />
+  <Project Path="Hexprite/Hexprite.csproj" />
+</Solution>

@@ -1,0 +1,7 @@
+obj/
+bin/
+.vs/
+graphify-out/
+.git/
+*.g.cs
+*.g.i.cs

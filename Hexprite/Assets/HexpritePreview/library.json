@@ -1,0 +1,11 @@
+{
+  "name": "HexpritePreview",
+  "version": "1.1.0",
+  "description": "Live hardware preview for Hexprite pixel art editor.",
+  "keywords": ["display", "oled", "hexprite", "u8g2", "serial"],
+  "frameworks": "arduino",
+  "platforms": "*",
+  "dependencies": [
+    { "name": "olikraus/U8g2", "version": "^2.35.0" }
+  ]
+}

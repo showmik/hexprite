@@ -1,0 +1,342 @@
+<Window x:Class="Hexprite.Views.FlipperMediaSlicerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Flipper Sprite Sheet &amp; Media Slicer"
+        Height="760" Width="1060"
+        MinHeight="650" MinWidth="940"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        Foreground="{DynamicResource Brush.Text.Primary}"
+        FontFamily="{DynamicResource Font.Primary}"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        ResizeMode="CanResize"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        core:WindowChromeHelper.ForceRoundedCorners="True"
+        AllowDrop="True"
+        DragOver="Window_DragOver"
+        Drop="Window_Drop"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Hexprite;component/Themes/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <FontFamily x:Key="Font.Primary">Segoe UI</FontFamily>
+            <FontFamily x:Key="Font.Code">Consolas</FontFamily>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- Row 0: Custom Title Bar -->
+                <RowDefinition Height="Auto"/>
+                <!-- Row 1: Main Content -->
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 0: CUSTOM TITLE BAR
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,0,0,1" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Height="34">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0" IsHitTestVisible="False">
+                        <TextBlock Text="🎞️" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Flipper Sprite Sheet &amp; Media Slicer" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Atlas Slicer &amp; Dither Studio" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Base}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close (Esc)" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 1: MAIN BODY
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="1" Margin="14,10,14,12">
+                <Grid.RowDefinitions>
+                    <!-- Row 0: Subtitle Banner -->
+                    <RowDefinition Height="Auto"/>
+                    <!-- Row 1: Editor Split Area -->
+                    <RowDefinition Height="*"/>
+                    <!-- Row 2: Footer Action Bar -->
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Row 0: Subtitle Banner -->
+                <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="6" Padding="12,8" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Slice horizontal/vertical sprite sheets and grid atlases into multi-frame 128×64 Flipper Zero animations with real-time dithering."
+                                   FontSize="11" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" Background="{DynamicResource Brush.Accent.Subtle}" CornerRadius="4" Padding="6,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="Drag &amp; Drop Ready" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Base}"/>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Row 1: Main Workspace Split -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="380"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Slicing & Dithering Controls Card -->
+                    <Border Grid.Column="0" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,10,0">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <!-- File Loader -->
+                                <TextBlock Text="SOURCE IMAGE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,6"/>
+                                <Button x:Name="BtnOpenImage" Content="📂 Open Sprite Sheet / Image..." Style="{StaticResource ModernButtonStyle}" Height="28" Padding="12,0" Margin="0,0,0,6" Command="{Binding OpenImageCommand}"/>
+                                <TextBlock x:Name="TxtSourceInfo" Text="{Binding SourceInfoText}" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,12"/>
+
+                                <!-- Slicing Geometry -->
+                                <TextBlock Text="SPRITE SHEET LAYOUT" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,6"/>
+                                <ComboBox x:Name="CboLayout" Style="{StaticResource ModernComboBoxStyle}" Height="26" SelectedIndex="{Binding SelectedLayoutIndex, Mode=TwoWay}" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Horizontal Strip (Left ➔ Right)"/>
+                                    <ComboBoxItem Content="Vertical Strip (Top ➔ Bottom)"/>
+                                    <ComboBoxItem Content="Grid (Columns × Rows)"/>
+                                </ComboBox>
+
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                        <TextBlock Text="Frame Width (px)" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBox x:Name="TxtFrameW" Text="{Binding FrameWidth, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Height="24"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                        <TextBlock Text="Frame Height (px)" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBox x:Name="TxtFrameH" Text="{Binding FrameHeight, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Height="24"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,3,0">
+                                        <TextBlock Text="Cols" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBox x:Name="TxtCols" Text="{Binding Columns, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Height="24"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="3,0,3,0">
+                                        <TextBlock Text="Rows" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBox x:Name="TxtRows" Text="{Binding Rows, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Height="24"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" Margin="3,0,0,0">
+                                        <TextBlock Text="Max Frames" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                        <TextBox x:Name="TxtMaxFrames" Text="{Binding MaxFrames, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBoxStyle}" Height="24"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Dithering & Threshold -->
+                                <TextBlock Text="MONOCHROME CONVERSION" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,4,0,6"/>
+                                <ComboBox x:Name="CboDither" Style="{StaticResource ModernComboBoxStyle}" Height="26" SelectedIndex="{Binding SelectedDitherIndex, Mode=TwoWay}" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Floyd-Steinberg (Error Diffusion)"/>
+                                    <ComboBoxItem Content="Atkinson (Pixel Art Sharp)"/>
+                                    <ComboBoxItem Content="Bayer 8×8 (Ordered Matrix)"/>
+                                    <ComboBoxItem Content="Stucki (Smooth Gradient)"/>
+                                    <ComboBoxItem Content="SierraLite (Fast Clean)"/>
+                                    <ComboBoxItem Content="Binary (Hard Threshold)"/>
+                                </ComboBox>
+
+                                <Grid Margin="0,0,0,2">
+                                    <TextBlock Text="Brightness Threshold" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                    <TextBlock x:Name="TxtValThreshold" Text="{Binding BrightnessThreshold}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource Brush.Text.Secondary}"/>
+                                </Grid>
+                                <Slider x:Name="SliderThreshold" Minimum="0" Maximum="255" Value="{Binding BrightnessThreshold, Mode=TwoWay}" Height="16" Margin="0,0,0,6"/>
+
+                                <Grid Margin="0,0,0,2">
+                                    <TextBlock Text="Dither Intensity" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                    <TextBlock x:Name="TxtValDither" Text="{Binding DitherAmount, StringFormat={}{0}%}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource Brush.Text.Secondary}"/>
+                                </Grid>
+                                <Slider x:Name="SliderDither" Minimum="0" Maximum="100" Value="{Binding DitherAmount, Mode=TwoWay}" Height="16" Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="ChkInvert" Content="Invert Monochrome (Dark Theme)" FontSize="11" Style="{StaticResource ModernCheckBoxStyle}" IsChecked="{Binding InvertColors, Mode=TwoWay}" Margin="0,0,0,8"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+
+                    <!-- Right: Previews (Sheet Overview & Sliced LCD Player) -->
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <!-- Top: Source Sheet Overview -->
+                            <RowDefinition Height="*"/>
+                            <!-- Bottom: Sliced Animation Player Card -->
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Source Sheet Preview Card -->
+                        <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="SPRITE SHEET OVERVIEW" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,8"/>
+                                <Border Grid.Row="1" Background="#0C0E14" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="4">
+                                    <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Padding="8">
+                                        <Image x:Name="ImgSourceSheet" Source="{Binding SourceImage}" RenderOptions.BitmapScalingMode="NearestNeighbor" Stretch="None" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Sliced Animation Player Card -->
+                        <Border Grid.Row="1" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <!-- LCD Screen & Quick Theme Controls -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- Timeline Scrubber Slider -->
+                                    <RowDefinition Height="Auto"/>
+                                    <!-- Playback Transport Bar -->
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Row 0: Virtual LCD Screen Bezel + Theme Selector -->
+                                <Grid Grid.Row="0" Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <!-- LCD Bezel -->
+                                        <ColumnDefinition Width="Auto"/>
+                                        <!-- Theme & Info Panel -->
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 128x64 LCD Screen (3x scale = 384x192) -->
+                                    <Border Grid.Column="0" Background="{DynamicResource Brush.Surface.Control}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="2" CornerRadius="8" Padding="6" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Border BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="4" Padding="2" Background="{DynamicResource Brush.Surface.MenuBar}">
+                                            <Image x:Name="ImgLcdScreen" Source="{Binding LcdBitmap}" Width="384" Height="192" RenderOptions.BitmapScalingMode="NearestNeighbor" Stretch="Fill"/>
+                                        </Border>
+                                    </Border>
+
+                                    <!-- Theme Selector & Screen Settings -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0">
+                                        <TextBlock Text="LCD THEME &amp; PALETTE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,6"/>
+
+                                        <ComboBox ItemsSource="{Binding ThemePalettes}" SelectedIndex="{Binding SelectedPaletteIndex, Mode=TwoWay}" Style="{StaticResource ModernComboBoxStyle}" Height="28" Margin="0,0,0,8">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <Border Width="12" Height="12" CornerRadius="2" Background="{Binding BackgroundBrush}" BorderBrush="{Binding ForegroundBrush}" BorderThickness="1" Margin="0,0,6,0"/>
+                                                        <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <CheckBox Content="LCD Sub-Pixel Dot Grid" IsChecked="{Binding ShowLcdGrid, Mode=TwoWay}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" Margin="0,0,0,12"/>
+
+                                        <Grid Margin="0,0,0,2">
+                                            <TextBlock Text="Playback Speed" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}"/>
+                                            <TextBlock x:Name="TxtFpsLabel" Text="{Binding FpsLabel}" FontSize="10" HorizontalAlignment="Right" Foreground="{DynamicResource Brush.Text.Secondary}"/>
+                                        </Grid>
+                                        <Slider x:Name="SliderFps" Minimum="1" Maximum="30" Value="{Binding Fps, Mode=TwoWay}" Height="16"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Row 1: Interactive Timeline Scrubber Slider -->
+                                <Grid Grid.Row="1" Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Column="0" Text="1" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+
+                                    <Slider Grid.Column="1" x:Name="SliderScrubber"
+                                            Minimum="0" Maximum="{Binding MaxFrameIndex}"
+                                            Value="{Binding CurrentFrameIndex, Mode=TwoWay}"
+                                            SmallChange="1" LargeChange="1"
+                                            TickFrequency="1" IsSnapToTickEnabled="True"
+                                            VerticalAlignment="Center"/>
+
+                                    <TextBlock Grid.Column="2" Text="{Binding TotalFrames}" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                </Grid>
+
+                                <!-- Row 2: Playback Transport Bar -->
+                                <Grid Grid.Row="2">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Content="⏮⏮" ToolTip="First Frame (Home)" Command="{Binding FirstFrameCommand}" Style="{StaticResource ModernButtonStyle}" Width="34" Height="26" Margin="0,0,4,0"/>
+                                        <Button Content="⏮" ToolTip="Previous Frame (Left Arrow)" Command="{Binding PrevFrameCommand}" Style="{StaticResource ModernButtonStyle}" Width="34" Height="26" Margin="0,0,6,0"/>
+                                        <Button Content="{Binding PlayPauseButtonText}" ToolTip="Play / Pause (Space)" Command="{Binding TogglePlayPauseCommand}" Style="{StaticResource ModernButtonStyle}" Width="84" Height="26" FontWeight="SemiBold" Margin="0,0,6,0"/>
+                                        <Button Content="⏭" ToolTip="Next Frame (Right Arrow)" Command="{Binding NextFrameCommand}" Style="{StaticResource ModernButtonStyle}" Width="34" Height="26" Margin="0,0,4,0"/>
+                                        <Button Content="⏭⏭" ToolTip="Last Frame (End)" Command="{Binding LastFrameCommand}" Style="{StaticResource ModernButtonStyle}" Width="34" Height="26" Margin="0,0,12,0"/>
+                                        <Border Background="{DynamicResource Brush.Surface.Control}" CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                            <TextBlock x:Name="TxtFrameCounter" Text="{Binding FrameCounterText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+
+                <!-- Row 2: Footer Actions Bar -->
+                <Grid Grid.Row="2" Margin="0,12,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Shortcuts:" FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                            <TextBlock Text="Space: Play/Pause" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </Border>
+                        <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                            <TextBlock Text="← / →: Step Frame" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </Border>
+                        <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1" Margin="0,0,4,0">
+                            <TextBlock Text="Ctrl+O: Open" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </Border>
+                        <Border Background="{DynamicResource Brush.Surface.Hover}" CornerRadius="3" Padding="4,1">
+                            <TextBlock Text="Esc: Close" FontSize="9" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="Close" Style="{StaticResource ModernButtonStyle}" Width="75" Height="28" Padding="12,0" Margin="0,0,8,0" Click="BtnClose_Click"/>
+                        <Button Content="🎞️ Export GIF..." ToolTip="Export animated GIF rendered with active LCD theme" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,6,0" Command="{Binding ExportGifCommand}"/>
+                        <Button Content="🖼️ Export PNGs..." ToolTip="Export frame sequence PNG images with active LCD theme" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,6,0" Command="{Binding ExportPngSequenceCommand}"/>
+                        <Button x:Name="BtnExportFolder" Content="💾 Flipper Folder..." ToolTip="Export full Flipper animation directory with meta.txt and .bm files" Style="{StaticResource ModernButtonStyle}" Height="28" Padding="10,0" Margin="0,0,8,0" Command="{Binding ExportFolderCommand}"/>
+                        <Button x:Name="BtnOpenInCanvas" Content="🎨 Open in Canvas" ToolTip="Open sliced frames directly in the main Hexprite canvas editor" Style="{StaticResource AccentButtonStyle}" Height="28" Padding="14,0" FontWeight="Bold" Command="{Binding OpenInCanvasCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

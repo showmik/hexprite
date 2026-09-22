@@ -1,0 +1,126 @@
+<Window x:Class="Hexprite.Views.UserFeedbackDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Send Feedback"
+        Width="520"
+        SizeToContent="Height"
+        MinHeight="420"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12"
+                               VerticalAlignment="Center"
+                               Margin="8,0,0,0"
+                               IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0"
+                           Text="Share ideas, requests, or what you enjoy about Hexprite. This is sent to the same channel as bug reports but marked as feedback."
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text.Muted}"
+                           Margin="0,0,0,8" />
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                    <TextBlock Text="Category" Margin="0,0,0,4" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                    <ComboBox x:Name="CategoryCombo"
+                              MinHeight="32"
+                              SelectedIndex="0"
+                              Style="{StaticResource ModernComboBoxStyle}">
+                        <ComboBoxItem Content="General" Tag="General"/>
+                        <ComboBoxItem Content="Feature request" Tag="Feature request"/>
+                        <ComboBoxItem Content="Usability / UX" Tag="Usability / UX"/>
+                        <ComboBoxItem Content="Praise" Tag="Praise"/>
+                        <ComboBoxItem Content="Other" Tag="Other"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                    <TextBlock Text="Your feedback" Margin="0,0,0,4" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                    <TextBox x:Name="MessageTextBox"
+                             Height="140"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalScrollBarVisibility="Auto"
+                             MaxLength="4000"
+                             Style="{StaticResource ModernTextBoxStyle}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="3" Margin="0,0,0,4">
+                    <TextBlock Text="Contact email (optional)" Margin="0,0,0,4" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                    <TextBox x:Name="EmailTextBox" MinHeight="32" MaxLength="200" Style="{StaticResource ModernTextBoxStyle}" />
+                    <CheckBox x:Name="ShareEmailCheckBox"
+                              Margin="0,4,0,0"
+                              Content="Include this email in feedback so we can contact you"
+                              Foreground="{DynamicResource Brush.Text.Primary}" />
+                    <CheckBox x:Name="IncludeLogsCheckBox"
+                              Margin="0,12,0,4"
+                              Content="Attach recent local logs (optional; only if you are comfortable sharing them)"
+                              Foreground="{DynamicResource Brush.Text.Primary}" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
+                    <Button Content="Cancel"
+                            Width="90"
+                            MinHeight="30"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            IsCancel="True"
+                            Click="Cancel_Click"/>
+                    <Button Content="Submit Feedback"
+                            Width="130"
+                            MinHeight="30"
+                            Style="{StaticResource AccentButtonStyle}"
+                            IsDefault="True"
+                            Click="Submit_Click"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

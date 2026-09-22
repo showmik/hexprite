@@ -1,0 +1,83 @@
+root = true
+
+[*.cs]
+
+# Pedantic / Style-only rules from Meziantou
+dotnet_diagnostic.MA0051.severity = none # Method is too long
+dotnet_diagnostic.MA0011.severity = none # IFormatProvider (culture-specific strings)
+dotnet_diagnostic.MA0006.severity = none # string.Equals over operator ==
+dotnet_diagnostic.MA0158.severity = none # System.Threading.Lock (requires .NET 9)
+dotnet_diagnostic.MA0004.severity = none # Task.ConfigureAwait(false) everywhere
+dotnet_diagnostic.MA0074.severity = none # StartsWith StringComparison
+dotnet_diagnostic.MA0016.severity = none # Prefer collection abstraction
+dotnet_diagnostic.MA0002.severity = none # IEqualityComparer
+dotnet_diagnostic.MA0147.severity = none # Avoid async void (WPF commands need this)
+dotnet_diagnostic.MA0023.severity = none # RegexOptions.ExplicitCapture
+dotnet_diagnostic.MA0009.severity = none # Regex DoS (Needs manual TimeSpan timeouts)
+dotnet_diagnostic.MA0134.severity = none # Observe async result
+dotnet_diagnostic.MA0065.severity = none # Struct equality
+
+# Sonar Analyzer noisy rules
+dotnet_diagnostic.S2368.severity = none # Jagged arrays over multidimensional arrays
+dotnet_diagnostic.S2325.severity = none # Make static method
+dotnet_diagnostic.S3267.severity = none # LINQ over loop
+dotnet_diagnostic.S112.severity = none  # Generic Exception
+dotnet_diagnostic.S927.severity = none  # Rename parameter
+dotnet_diagnostic.S6608.severity = none # Indexing at 0 instead of First()
+dotnet_diagnostic.S1066.severity = none # Merge if statements
+dotnet_diagnostic.S3458.severity = none # Empty case clause
+dotnet_diagnostic.S6966.severity = none # Await CancelAsync
+dotnet_diagnostic.S4143.severity = none # Verify key already set
+dotnet_diagnostic.S3237.severity = none # contextual keyword value
+dotnet_diagnostic.S3358.severity = none # Extract nested ternary
+dotnet_diagnostic.S1121.severity = none # Extract assignment
+dotnet_diagnostic.S1871.severity = none # Merge identical branches
+dotnet_diagnostic.S1244.severity = none # Float equality
+dotnet_diagnostic.S1172.severity = none # Unused method parameter
+dotnet_diagnostic.S1481.severity = none # Unused local variable
+dotnet_diagnostic.S1854.severity = none # Useless assignment
+dotnet_diagnostic.S108.severity = none  # Empty block
+dotnet_diagnostic.S2486.severity = none # Explain exception block
+dotnet_diagnostic.S3168.severity = none # Return Task (async void)
+dotnet_diagnostic.S5445.severity = none # GetTempFileName insecure
+dotnet_diagnostic.S1075.severity = none # Hardcoded paths
+dotnet_diagnostic.S6668.severity = none # Logging parameters
+
+# Remaining noise
+dotnet_diagnostic.MA0048.severity = none
+dotnet_diagnostic.S3881.severity = none
+dotnet_diagnostic.S4144.severity = none
+dotnet_diagnostic.S2681.severity = none
+dotnet_diagnostic.S1144.severity = none
+dotnet_diagnostic.S1450.severity = none
+dotnet_diagnostic.S2930.severity = none
+dotnet_diagnostic.MA0015.severity = none
+dotnet_diagnostic.S907.severity = none
+dotnet_diagnostic.S3928.severity = none
+dotnet_diagnostic.MA0046.severity = none
+dotnet_diagnostic.MA0025.severity = none
+dotnet_diagnostic.S4487.severity = none
+
+dotnet_diagnostic.MA0095.severity = none
+dotnet_diagnostic.CS8603.severity = none
+dotnet_diagnostic.S101.severity = none
+dotnet_diagnostic.S2933.severity = none
+dotnet_diagnostic.S125.severity = none
+
+dotnet_diagnostic.MA0077.severity = none
+dotnet_diagnostic.MA0008.severity = none
+dotnet_diagnostic.S3604.severity = none
+dotnet_diagnostic.MA0005.severity = none
+dotnet_diagnostic.S6610.severity = none
+dotnet_diagnostic.S1125.severity = none
+dotnet_diagnostic.S1905.severity = none
+dotnet_diagnostic.MA0099.severity = none
+dotnet_diagnostic.MA0169.severity = none
+
+dotnet_diagnostic.CS8602.severity = none
+dotnet_diagnostic.S3260.severity = none
+
+dotnet_diagnostic.S2699.severity = none
+dotnet_diagnostic.S2925.severity = none
+dotnet_diagnostic.S3459.severity = none
+dotnet_diagnostic.IDE0031.severity = none

@@ -1,0 +1,220 @@
+<Window x:Class="Hexprite.Views.FlipperDeployWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Push to Flipper Zero"
+        Width="540" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/Hexprite;component/Themes/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+            <FontFamily x:Key="Font.Primary">Segoe UI</FontFamily>
+            <FontFamily x:Key="Font.Code">Consolas</FontFamily>
+
+            <!-- Preset Chip Base Style -->
+            <Style x:Key="PresetChipBaseStyle" TargetType="Button" BasedOn="{StaticResource ModernButtonStyle}">
+                <Setter Property="Height" Value="22"/>
+                <Setter Property="Padding" Value="8,0"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="Margin" Value="0,0,4,0"/>
+            </Style>
+
+            <Style x:Key="MomentumPresetStyle" TargetType="Button" BasedOn="{StaticResource PresetChipBaseStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsMomentumPresetActive}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Brush.Accent.Subtle}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="DolphinAnimsPresetStyle" TargetType="Button" BasedOn="{StaticResource PresetChipBaseStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsDolphinAnimsPresetActive}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Brush.Accent.Subtle}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <Style x:Key="StockPresetStyle" TargetType="Button" BasedOn="{StaticResource PresetChipBaseStyle}">
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsStockPresetActive}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource Brush.Accent.Subtle}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent.Base}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- 0: CUSTOM TITLE BAR -->
+                <RowDefinition Height="Auto" />
+                <!-- 1: CONTENT -->
+                <RowDefinition Height="*" />
+                <!-- 2: FOOTER / ACTIONS -->
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 0: CUSTOM TITLE BAR
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,0,0,1" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Height="34">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0" IsHitTestVisible="False">
+                        <TextBlock Text="⚡" FontSize="12" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Push to Flipper Zero" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Border Background="{DynamicResource Brush.Surface.Active}" CornerRadius="3" Padding="6,1" Margin="10,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Text="USB CDC Flash" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="10" FontWeight="SemiBold"/>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close (Esc)" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 1: MAIN CONTENT AREA
+                 ═══════════════════════════════════════════════════════════════ -->
+            <StackPanel Grid.Row="1" Margin="20,16,20,14">
+                <!-- Device Selector Card -->
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="10"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Target Flipper Device (USB Serial COM)" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                            <ComboBox x:Name="CboDevices" ItemsSource="{Binding Devices}" SelectedItem="{Binding SelectedDevice, Mode=TwoWay}" DisplayMemberPath="DisplayName" SelectedValuePath="PortName" Style="{StaticResource ModernComboBoxStyle}" Height="28"/>
+                        </StackPanel>
+                        <Button Grid.Column="2" Content="🔄 Rescan" ToolTip="Rescan COM Ports (F5)" Command="{Binding RefreshDevicesCommand}" Padding="12,0" MinWidth="92" Height="28" VerticalAlignment="Bottom"
+                                Style="{StaticResource ModernButtonStyle}"/>
+                    </Grid>
+                </Border>
+
+                <!-- Remote SD Card Destination Card -->
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="Destination Path on SD Card" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5"/>
+                        <TextBox x:Name="TxtRemotePath" Style="{StaticResource ModernTextBoxStyle}" Text="{Binding RemotePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                            <TextBlock Text="Presets:" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Button Content="📦 Momentum / Xtreme Pack" ToolTip="/ext/asset_packs/{PackName}" Command="{Binding SetMomentumPresetCommand}" Style="{StaticResource MomentumPresetStyle}"/>
+                            <Button Content="🐬 Dolphin Anims" ToolTip="/ext/dolphin/anims/{PackName}" Command="{Binding SetDolphinAnimsPresetCommand}" Style="{StaticResource DolphinAnimsPresetStyle}"/>
+                            <Button Content="💾 Stock Firmware" ToolTip="/ext/dolphin" Command="{Binding SetStockPresetCommand}" Style="{StaticResource StockPresetStyle}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- File Summary & Item List Card -->
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding FileSummaryText}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" FontWeight="SemiBold"/>
+                        </Grid>
+
+                        <!-- Scrollable File Item Viewer -->
+                        <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding FileItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{DynamicResource Brush.Surface.Control}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,0,0,3">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding FileIcon}" FontSize="10" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding RelativePath}" FontSize="10" FontFamily="{DynamicResource Font.Code}" Foreground="{DynamicResource Brush.Text.Primary}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding FormattedSize}" FontSize="9" Foreground="{DynamicResource Brush.Text.Muted}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+
+                <!-- Progress Bar & Status -->
+                <StackPanel Margin="0,0,0,10">
+                    <ProgressBar x:Name="PbUpload" Value="{Binding UploadProgressPercent}" Height="6" Background="{DynamicResource Brush.Surface.Panel}" Foreground="{DynamicResource Brush.Status.Info}" Maximum="100"/>
+                    <TextBlock x:Name="TxtStatus" Text="{Binding StatusMessage}" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+
+                <!-- Diagnostic Tip Card -->
+                <Border Background="{DynamicResource Brush.Surface.Control}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="1" CornerRadius="6" Padding="10,6">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="💡" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Tip: If deployment fails or COM port is busy, ensure qFlipper is closed and the Flipper Zero is unlocked."
+                                   FontSize="10" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ═══════════════════════════════════════════════════════════════
+                 ROW 2: BOTTOM BAR
+                 ═══════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Base}" BorderThickness="0,1,0,0" Padding="16,12">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <CheckBox x:Name="ChkRestartDesktop" Grid.Column="0" Content="Reload Flipper Desktop when finished" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" IsChecked="{Binding RestartDesktop, Mode=TwoWay}"/>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Cancel" Command="{Binding CancelDeployCommand}" Style="{StaticResource ModernButtonStyle}" MinWidth="80" Padding="12,0" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnDeploy" Content="⚡ Push to Flipper" Command="{Binding DeployCommand}" IsEnabled="{Binding CanDeploy}" Style="{StaticResource AccentButtonStyle}" MinWidth="140" Padding="16,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

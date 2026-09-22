@@ -1,0 +1,81 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Test: Fast Loop (Category!=Fuzz)",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "Hexprite.Tests/Hexprite.Tests.csproj",
+        "--filter",
+        "Category!=Fuzz",
+        "--no-build",
+        "--nologo"
+      ],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test: Changed Files (Smart)",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "./scripts/Test-Changed.ps1"
+      ],
+      "group": "test",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Test: Full Suite",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "test",
+        "Hexprite.Tests/Hexprite.Tests.csproj",
+        "--no-build",
+        "--nologo"
+      ],
+      "group": "test",
+      "problemMatcher": "$msCompile",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Build Solution",
+      "type": "process",
+      "command": "dotnet",
+      "args": [
+        "build",
+        "Hexprite.sln",
+        "--nologo"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": "$msCompile"
+    }
+  ]
+}

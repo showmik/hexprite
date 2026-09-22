@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <!-- Run Configuration -->
+  <RunConfiguration>
+    <MaxCpuCount>0</MaxCpuCount>
+    <ResultsDirectory>.\TestResults</ResultsDirectory>
+    <TestSessionTimeout>120000</TestSessionTimeout>
+    <TargetFrameworkVersion>.NETCoreApp,Version=v10.0</TargetFrameworkVersion>
+  </RunConfiguration>
+
+  <!-- xUnit.net Runner Configuration -->
+  <xUnit>
+    <parallelizeAssembly>true</parallelizeAssembly>
+    <parallelizeTestCollections>true</parallelizeTestCollections>
+    <methodDisplay>method</methodDisplay>
+    <diagnosticMessages>false</diagnosticMessages>
+    <shadowCopy>false</shadowCopy>
+  </xUnit>
+
+  <!-- Code Coverage Configuration (Visual Studio & Coverlet) -->
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Include>[Hexprite]*</Include>
+          <Exclude>
+            [Hexprite.Tests]*
+            [Hexprite]Hexprite.Views.*
+            [Hexprite]Hexprite.MainWindow
+            [Hexprite]Hexprite.App
+            [Hexprite]*.GeneratedInternalTypeHelper
+          </Exclude>
+          <ExcludeByAttribute>Obsolete,GeneratedCode,CompilerGenerated,ExcludeFromCodeCoverage</ExcludeByAttribute>
+          <SingleHit>false</SingleHit>
+          <UseSourceLink>true</UseSourceLink>
+          <IncludeTestAssembly>false</IncludeTestAssembly>
+        </Configuration>
+      </DataCollector>
+
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceDataCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+        <Configuration>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*Hexprite\.dll$</ModulePath>
+              </Include>
+              <Exclude>
+                <ModulePath>.*Hexprite\.Tests\.dll$</ModulePath>
+              </Exclude>
+            </ModulePaths>
+            <Functions>
+              <Exclude>
+                <Function>.*Hexprite\.Views\..*</Function>
+                <Function>.*InitializeComponent.*</Function>
+                <Function>.*\.g\.i?\.cs$</Function>
+              </Exclude>
+            </Functions>
+            <Attributes>
+              <Exclude>
+                <Attribute>^System\.Diagnostics\.CodeAnalysis\.ExcludeFromCodeCoverageAttribute$</Attribute>
+                <Attribute>^System\.CodeDom\.Compiler\.GeneratedCodeAttribute$</Attribute>
+              </Exclude>
+            </Attributes>
+            <Sources>
+              <Exclude>
+                <Source>.*\\Views\\.*</Source>
+                <Source>.*\.g\.cs$</Source>
+                <Source>.*\.g\.i\.cs$</Source>
+              </Exclude>
+            </Sources>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -1,0 +1,188 @@
+<UserControl x:Class="Hexprite.Views.StatusBarPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             d:DesignHeight="30" d:DesignWidth="1000">
+    <Border>
+        <Border.Style>
+            <Style TargetType="Border" BasedOn="{StaticResource StatusBarPanel}">
+                <Setter Property="Visibility" Value="Visible" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding}" Value="{x:Null}">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+        <Grid MinHeight="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Tool Name -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,16,0">
+                <TextBlock Text="🛠" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding CurrentTool, StringFormat={}Tool: {0}, Mode=OneWay}" 
+                           Foreground="{DynamicResource Brush.Text.Primary}" 
+                           FontSize="11" FontWeight="Medium" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Coordinates -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Text="⌖" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" FontWeight="Medium" VerticalAlignment="Center" MinWidth="75" Typography.NumeralAlignment="Tabular">
+                    <Run Text="X: "/><Run Text="{Binding CursorX, Mode=OneWay}"/><Run Text=", Y: "/><Run Text="{Binding CursorY, Mode=OneWay}"/>
+                </TextBlock>
+            </StackPanel>
+
+            <!-- Canvas Dimensions -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Text="📐" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding CanvasDimensionText, Mode=OneWay}" 
+                           Foreground="{DynamicResource Brush.Text.Primary}" 
+                           FontSize="11" FontWeight="Medium" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Zoom Level -->
+            <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                <TextBlock Text="🔍" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <TextBlock Text="{Binding ZoomLevel, StringFormat={}Zoom: {0:F1}x, Mode=OneWay}" 
+                           Foreground="{DynamicResource Brush.Text.Primary}" 
+                           FontSize="11" FontWeight="Medium" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Selection Info (shown when selection exists) -->
+            <Border Grid.Column="4" Background="{DynamicResource Brush.Accent.Muted}" BorderBrush="{DynamicResource Brush.Accent.Base}" BorderThickness="1" CornerRadius="4" Padding="8,2" Margin="0,0,8,0">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectionInfo}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⬚" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding SelectionInfo}" 
+                               Foreground="{DynamicResource Brush.Accent.Base}" 
+                               FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- Layer Hover Info (shown when hovering layers) -->
+            <TextBlock Grid.Column="5"
+                       Text="{Binding LayerHoverInfo}"
+                       Foreground="{DynamicResource Brush.Text.Muted}"
+                       VerticalAlignment="Center"
+                       FontSize="11"
+                       Margin="0,0,16,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding LayerHoverInfo}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Status message and Processing Indicator (center-right, data-bound) -->
+            <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                
+                <TextBlock Text="{Binding StatusMessage}"
+                           Foreground="{DynamicResource Brush.Accent.Base}"
+                           VerticalAlignment="Center"
+                           FontSize="11"
+                           FontWeight="Medium"
+                           Padding="0"
+                           Margin="0,0,16,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding StatusMessage}" Value="">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsProcessing}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="⏳" Foreground="{DynamicResource Brush.Accent.Base}" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                    <TextBlock Text="Processing..." Foreground="{DynamicResource Brush.Accent.Base}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Keyboard Modifiers (rightmost) -->
+            <StackPanel Grid.Column="7"
+                        Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="16,0,4,0">
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Separator}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsShiftPressed}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="Shift" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                </Border>
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Separator}" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsCtrlPressed}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="Ctrl" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                </Border>
+                <Border Background="{DynamicResource Brush.Surface.Panel}" BorderBrush="{DynamicResource Brush.Border.Separator}" BorderThickness="1" CornerRadius="4" Padding="6,2">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsAltPressed}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="Alt" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
+                </Border>
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

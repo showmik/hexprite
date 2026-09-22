@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore Hexprite.slnx
+
+    - name: Build
+      run: dotnet build Hexprite.slnx -c Release --no-restore -warnAsError
+
+    - name: Test
+      run: dotnet test Hexprite.Tests/Hexprite.Tests.csproj -c Release --no-build --verbosity normal

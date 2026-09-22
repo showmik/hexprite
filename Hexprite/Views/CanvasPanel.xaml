@@ -1,0 +1,1364 @@
+<UserControl x:Class="Hexprite.Views.CanvasPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:core="clr-namespace:Hexprite.Core"
+             xmlns:behaviors="clr-namespace:Hexprite.Behaviors"
+             mc:Ignorable="d"
+             d:DesignHeight="600" d:DesignWidth="800">
+    <UserControl.Resources>
+        <x:Array x:Key="FloatingPasteModeOptions" Type="{x:Type core:FloatingPasteMode}">
+            <core:FloatingPasteMode>Transparent</core:FloatingPasteMode>
+            <core:FloatingPasteMode>Opaque</core:FloatingPasteMode>
+        </x:Array>
+        <Style x:Key="SymmetryHandleStyle" TargetType="Thumb">
+            <Setter Property="Width" Value="14" />
+            <Setter Property="Height" Value="14" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <!-- Large transparent hit area -->
+                        <Grid Background="Transparent">
+                            <Border Width="6" Height="6" Background="White" BorderBrush="Black" BorderThickness="1" SnapsToDevicePixels="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Context toolbar -->
+        <Border Grid.Row="0"
+                Style="{StaticResource PanelStyle}"
+                Margin="0,0,0,8"
+                Padding="8,4">
+            <Grid MinHeight="26">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+
+
+                <!-- Contextual Options (all share Column 2) -->
+
+                <!-- 1. Brush options (Pencil only) -->
+                <StackPanel Orientation="Horizontal"
+                            Grid.Column="2">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility"
+                                    Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Pencil">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Eraser">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Dither">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Line">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Rectangle">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Ellipse">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="FilledRectangle">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="FilledEllipse">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- Brush Shape label -->
+                    <TextBlock Text="SHAPE"
+                               Style="{StaticResource HeaderStyle}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+
+                    <!-- Circle shape button -->
+                    <RadioButton x:Name="RbBrushCircle" x:FieldModifier="public"
+                                 GroupName="BrushShape"
+                                 IsChecked="True"
+                                 Checked="BrushShape_Checked"
+                                 Tag="Circle"
+                                 ToolTip="Circle Brush"
+                                 Width="24" Height="24"
+                                 Margin="0,0,2,0"
+                                 Style="{StaticResource VerticalToolButtonStyle}">
+                        <Ellipse Width="10" Height="10"
+                                 Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                    </RadioButton>
+
+                    <!-- Square shape button -->
+                    <RadioButton x:Name="RbBrushSquare" x:FieldModifier="public"
+                                 GroupName="BrushShape"
+                                 Checked="BrushShape_Checked"
+                                 Tag="Square"
+                                 ToolTip="Square Brush"
+                                 Width="24" Height="24"
+                                 Margin="0,0,2,0"
+                                 Style="{StaticResource VerticalToolButtonStyle}">
+                        <Rectangle Width="10" Height="10"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                    </RadioButton>
+
+                    <!-- Line shape button -->
+                    <RadioButton x:Name="RbBrushLine" x:FieldModifier="public"
+                                 GroupName="BrushShape"
+                                 Checked="BrushShape_Checked"
+                                 Tag="Line"
+                                 ToolTip="Line Brush"
+                                 Width="24" Height="24"
+                                 Margin="0,0,0,0"
+                                 Style="{StaticResource VerticalToolButtonStyle}">
+                        <Rectangle Width="14" Height="2"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                    </RadioButton>
+
+                    <!-- Separator -->
+                    <Rectangle Width="2"
+                               Style="{StaticResource SeparatorRectangleStyle}"
+                               Margin="12,4,12,4" />
+
+                    <!-- Brush Size label -->
+                    <TextBlock Text="SIZE"
+                               Style="{StaticResource HeaderStyle}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <Button Width="22"
+                            Height="22"
+                            Margin="0,0,6,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="0"
+                            Click="BtnBrushDown_Click">
+                        <Path Style="{StaticResource StrokedToolIconStyle}"
+                              Data="M22.5 13.5H1.5C0.671578 13.5 0 12.8284 0 12C0 11.1716 0.671578 10.5 1.5 10.5H22.5C23.3284 10.5 24 11.1716 24 12C24 12.8284 23.3284 13.5 22.5 13.5Z" />
+                    </Button>
+                    <Slider x:Name="BrushSizeSlider" x:FieldModifier="public"
+                            Width="80"
+                            Minimum="1"
+                            Maximum="64"
+                            Value="{Binding BrushSize}"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            Margin="0,0,6,0"
+                            ToolTip="Pencil brush size ([ / ] or Ctrl+Scroll)" />
+                    <Button Width="22"
+                            Height="22"
+                            Margin="0,0,8,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Padding="0"
+                            Click="BtnBrushUp_Click">
+                        <Path Style="{StaticResource StrokedToolIconStyle}"
+                              Data="M22.5 10.5H13.5V1.5C13.5 0.671578 12.8284 0 12 0C11.1716 0 10.5 0.671578 10.5 1.5V10.5H1.5C0.671578 10.5 0 11.1716 0 12C0 12.8284 0.671578 13.5 1.5 13.5H10.5V22.5C10.5 23.3284 11.1716 24 12 24C12.8284 24 13.5 23.3284 13.5 22.5V13.5H22.5C23.3284 13.5 24 12.8284 24 12C24 11.1716 23.3284 10.5 22.5 10.5Z" />
+                    </Button>
+                    <TextBox x:Name="BrushSizeTextBox" x:FieldModifier="public"
+                             Text="{Binding BrushSize, UpdateSourceTrigger=LostFocus}"
+                             Width="32"
+                             VerticalAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             FontSize="12"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.Accent.Base}"
+                             Style="{StaticResource NumericTextBoxStyle}"
+                             behaviors:NumericScrubBehavior.MinValue="1"
+                             behaviors:NumericScrubBehavior.MaxValue="64"
+                             PreviewTextInput="NumericTextBox_PreviewTextInput"
+                             LostFocus="BrushSizeTextBox_LostFocus"
+                             ToolTip="Brush size (1-64)" />
+                    <TextBlock Text="px"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               VerticalAlignment="Center"
+                               Margin="3,0,0,0"
+                               FontSize="11" />
+
+                    <CheckBox Content="Pixel-Perfect"
+                              IsChecked="{Binding IsPixelPerfectEnabled}"
+                              Foreground="{DynamicResource Brush.Text.Primary}"
+                              VerticalAlignment="Center"
+                              Margin="16,0,0,0"
+                              ToolTip="Remove staircase corners while freehand drawing.">
+                        <CheckBox.Style>
+                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Pencil">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Eraser">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Dither">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </CheckBox.Style>
+                    </CheckBox>
+
+                    <!-- Rotation controls (only for Square and Line) -->
+                    <StackPanel x:Name="RotationPanel" x:FieldModifier="public"
+                                Orientation="Horizontal"
+                                Margin="8,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BrushShape}" Value="Square">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding BrushShape}" Value="Line">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <Rectangle Width="2"
+                                   Style="{StaticResource SeparatorRectangleStyle}"
+                                   Margin="12,4,12,4" />
+
+                        <TextBlock Text="ANGLE"
+                                   Style="{StaticResource HeaderStyle}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <Slider x:Name="BrushAngleSlider" x:FieldModifier="public"
+                                Width="70"
+                                Minimum="0"
+                                Maximum="359"
+                                Value="{Binding BrushAngle}"
+                                TickFrequency="1"
+                                IsSnapToTickEnabled="True"
+                                VerticalAlignment="Center"
+                                ToolTip="Brush rotation angle (0-359°)" />
+                        <TextBox x:Name="BrushAngleTextBox" x:FieldModifier="public"
+                             Text="{Binding BrushAngle, UpdateSourceTrigger=LostFocus}"
+                             Width="40"
+                             VerticalAlignment="Center"
+                             Margin="4,0,0,0"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             FontSize="12"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.Accent.Base}"
+                             Style="{StaticResource NumericTextBoxStyle}"
+                             behaviors:NumericScrubBehavior.MinValue="0"
+                             behaviors:NumericScrubBehavior.MaxValue="359"
+                             PreviewTextInput="NumericTextBox_PreviewTextInput"
+                             LostFocus="BrushAngleTextBox_LostFocus"
+                             ToolTip="Brush angle (0-359°)" />
+                        <TextBlock Text="°"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   VerticalAlignment="Center"
+                                   Margin="3,0,0,0"
+                                   FontSize="12" />
+                    </StackPanel>
+
+
+                    <!-- Dither pattern selector (Dither tool only) -->
+                    <StackPanel Orientation="Horizontal"
+                                Margin="8,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility"
+                                        Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentTool}"
+                                                 Value="Dither">
+                                        <Setter Property="Visibility"
+                                                Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <Rectangle Width="2"
+                                   Style="{StaticResource SeparatorRectangleStyle}"
+                                   Margin="12,4,12,4" />
+
+                        <TextBlock Text="PATTERN"
+                                   Style="{StaticResource HeaderStyle}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+
+                        <RadioButton x:Name="RbDitherCheckerboard" x:FieldModifier="public"
+                                     GroupName="DitherPattern"
+                                     IsChecked="True"
+                                     Checked="DitherPattern_Checked"
+                                     Tag="Checkerboard"
+                                     ToolTip="Checkerboard (50%)"
+                                     Width="24" Height="24"
+                                     Margin="0,0,2,0"
+                                     Style="{StaticResource VerticalToolButtonStyle}">
+                            <Grid Width="12" Height="12">
+                                <Rectangle Width="6" Height="6" HorizontalAlignment="Left" VerticalAlignment="Top"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                <Rectangle Width="6" Height="6" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                            </Grid>
+                        </RadioButton>
+
+                        <RadioButton x:Name="RbDitherLight" x:FieldModifier="public"
+                                     GroupName="DitherPattern"
+                                     Checked="DitherPattern_Checked"
+                                     Tag="Light"
+                                     ToolTip="Light (25%)"
+                                     Width="24" Height="24"
+                                     Margin="0,0,2,0"
+                                     Style="{StaticResource VerticalToolButtonStyle}">
+                            <Grid Width="12" Height="12">
+                                <Ellipse Width="3" Height="3" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="1,1,0,0"
+                                         Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                <Ellipse Width="3" Height="3" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,1,1"
+                                         Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                            </Grid>
+                        </RadioButton>
+
+                        <RadioButton x:Name="RbDitherDense" x:FieldModifier="public"
+                                     GroupName="DitherPattern"
+                                     Checked="DitherPattern_Checked"
+                                     Tag="Dense"
+                                     ToolTip="Dense (75%)"
+                                     Width="24" Height="24"
+                                     Margin="0,0,2,0"
+                                     Style="{StaticResource VerticalToolButtonStyle}">
+                            <Grid Width="12" Height="12">
+                                <Rectangle Width="12" Height="12"
+                                           Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}" />
+                                <Ellipse Width="3" Height="3" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                         Fill="{DynamicResource Brush.Surface.Panel}" />
+                            </Grid>
+                        </RadioButton>
+
+                        <RadioButton x:Name="RbDitherDiagonal" x:FieldModifier="public"
+                                     GroupName="DitherPattern"
+                                     Checked="DitherPattern_Checked"
+                                     Tag="DiagonalLines"
+                                     ToolTip="Diagonal Lines"
+                                     Width="24" Height="24"
+                                     Margin="0,0,2,0"
+                                     Style="{StaticResource VerticalToolButtonStyle}">
+                            <Grid Width="12" Height="12">
+                                <Line X1="0" Y1="12" X2="12" Y2="0"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                      StrokeThickness="2" />
+                                <Line X1="0" Y1="6" X2="6" Y2="0"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                      StrokeThickness="2" />
+                            </Grid>
+                        </RadioButton>
+
+                        <RadioButton x:Name="RbDitherCrossHatch" x:FieldModifier="public"
+                                     GroupName="DitherPattern"
+                                     Checked="DitherPattern_Checked"
+                                     Tag="CrossHatch"
+                                     ToolTip="Cross-Hatch"
+                                     Width="24" Height="24"
+                                     Margin="0,0,2,0"
+                                     Style="{StaticResource VerticalToolButtonStyle}">
+                            <Grid Width="12" Height="12">
+                                <Line X1="0" Y1="12" X2="12" Y2="0"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                      StrokeThickness="1.5" />
+                                <Line X1="0" Y1="0" X2="12" Y2="12"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                                      StrokeThickness="1.5" />
+                            </Grid>
+                        </RadioButton>
+                    </StackPanel>
+
+                    <!-- Shape tool hint -->
+                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Line">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Rectangle">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="Ellipse">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="FilledRectangle">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding CurrentTool}" Value="FilledEllipse">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <TextBlock Text="&#xE9A6;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0" />
+                        <TextBlock Text="Shift + Drag to constrain proportions or angle"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   VerticalAlignment="Center"
+                                   FontStyle="Italic" />
+                    </StackPanel>
+
+                    <!-- Reset tool settings -->
+                    <Rectangle Width="2" Style="{StaticResource SeparatorRectangleStyle}" Margin="16,4,12,4" />
+                    
+                    <Button Command="{Binding ResetBrushCommand}"
+                            ToolTip="Reset tool settings"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Width="24" Height="24"
+                            Padding="0"
+                            Margin="0,0,4,0">
+                        <TextBlock Text="&#xE72C;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"
+                                   FontSize="12" />
+                    </Button>
+
+                </StackPanel>
+
+                <!-- 3. Fill hint -->
+                <StackPanel Orientation="Horizontal" Grid.Column="2">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Fill">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- Contiguous toggle (Only visible in RGB mode) -->
+                    <StackPanel Orientation="Horizontal">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SpriteState.ColorMode}" Value="Monochrome">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <CheckBox Content="Contiguous"
+                                  IsChecked="{Binding IsContiguousFillEnabled}"
+                                  Foreground="{DynamicResource Brush.Text.Primary}"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,16,0"
+                                  ToolTip="Uncheck to fill all pixels of this color across the entire layer" />
+
+                        <Rectangle Width="2" Style="{StaticResource SeparatorRectangleStyle}" Margin="0,4,12,4" />
+                    </StackPanel>
+
+                    <TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <TextBlock Text="Click to flood fill pixels" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" FontStyle="Italic" />
+
+
+                </StackPanel>
+
+                <!-- 4. Text Tool Controls -->
+                <StackPanel Orientation="Horizontal" Grid.Column="2">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Text">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="FONT" Style="{StaticResource HeaderStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    
+                    <ComboBox Width="160"
+                              ItemsSource="{Binding AvailableFonts}"
+                              SelectedItem="{Binding SelectedFont}"
+                              Margin="0,0,4,0"
+                              Style="{StaticResource ModernComboBoxStyle}"
+                              VerticalAlignment="Center"
+                              DropDownClosed="FontComboBox_DropDownClosed">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                    <TextBlock Text=" ✦" FontSize="9" Opacity="0.5" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.Accent.Base}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsBuiltIn}" Value="False">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- Open custom fonts folder -->
+                    <Button Width="24" Height="24" Padding="4" Margin="0,0,4,0"
+                            ToolTip="Open custom fonts folder"
+                            Style="{StaticResource CompactIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            Click="OpenFontsFolder_Click">
+                        <Path Data="M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z"
+                              Fill="{DynamicResource Brush.Text.Muted}"
+                              Stretch="Uniform" Width="12" Height="12" />
+                    </Button>
+
+                    <!-- Refresh fonts -->
+                    <Button Width="24" Height="24" Padding="4" Margin="0,0,16,0"
+                            ToolTip="Refresh font list"
+                            Style="{StaticResource CompactIconButtonStyle}"
+                            VerticalAlignment="Center"
+                            Click="RefreshFonts_Click">
+                        <Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"
+                              Fill="{DynamicResource Brush.Text.Muted}"
+                              Stretch="Uniform" Width="12" Height="12" />
+                    </Button>
+
+                    <TextBlock Text="SCALE" Style="{StaticResource HeaderStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                    <Slider Width="60"
+                            Minimum="1"
+                            Maximum="10"
+                            Value="{Binding PixelScale}"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ToolTip="Pixel scale — nearest-neighbor multiplier (1-10×)"
+                            Margin="0,0,8,0" />
+
+                    <TextBox Text="{Binding PixelScale, UpdateSourceTrigger=PropertyChanged}"
+                             Width="24"
+                             VerticalAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             FontSize="12"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.Accent.Base}"
+                             Style="{StaticResource NumericTextBoxStyle}"
+                             PreviewTextInput="NumericTextBox_PreviewTextInput"
+                             ToolTip="Pixel scale (1-10×)" />
+                    <TextBlock Text="x" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="2,0,8,0" FontSize="11" />
+
+                    <Rectangle Width="1" Height="14" Fill="{DynamicResource Brush.Text.Muted}" Opacity="0.3" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                    <TextBlock Text="{Binding FontSize, StringFormat={}{0}px}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               VerticalAlignment="Center"
+                               FontSize="11"
+                               ToolTip="Effective pixel height at current scale"
+                               Margin="0,0,16,0" />
+
+                    <TextBlock Text="SPACING" Style="{StaticResource HeaderStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                    <Slider Width="60"
+                            Minimum="-5"
+                            Maximum="20"
+                            Value="{Binding LetterSpacing}"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ToolTip="Letter spacing (-5 to 20)"
+                            Margin="0,0,8,0" />
+
+                    <TextBox Text="{Binding LetterSpacing, UpdateSourceTrigger=PropertyChanged}"
+                             Width="32"
+                             VerticalAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             FontSize="12"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.Accent.Base}"
+                             Style="{StaticResource NumericTextBoxStyle}"
+                             behaviors:NumericScrubBehavior.MinValue="-5"
+                             behaviors:NumericScrubBehavior.MaxValue="20"
+                             PreviewTextInput="NumericTextBox_PreviewTextInput"
+                             ToolTip="Letter spacing (-5 to 20)" />
+                    <TextBlock Text="px" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="4,0,12,0" FontSize="11" />
+
+                    <TextBlock Text="LEADING" Style="{StaticResource HeaderStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+
+                    <Slider Width="60"
+                            Minimum="-10"
+                            Maximum="20"
+                            Value="{Binding LineHeight}"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ToolTip="Line height / leading (-10 to 20px)"
+                            Margin="0,0,8,0" />
+
+                    <TextBox Text="{Binding LineHeight, UpdateSourceTrigger=PropertyChanged}"
+                             Width="32"
+                             VerticalAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"
+                             FontSize="12"
+                             FontWeight="Bold"
+                             Foreground="{DynamicResource Brush.Accent.Base}"
+                             Style="{StaticResource NumericTextBoxStyle}"
+                             behaviors:NumericScrubBehavior.MinValue="-10"
+                             behaviors:NumericScrubBehavior.MaxValue="20"
+                             PreviewTextInput="NumericTextBox_PreviewTextInput"
+                             ToolTip="Line height / leading (-10 to 20px)" />
+                    <TextBlock Text="px" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" Margin="4,0,12,0" FontSize="11" />
+
+                    <!-- Text alignment buttons -->
+                    <Button Width="24" Height="24" Padding="4" Margin="0,0,2,0" ToolTip="Align left"
+                            Style="{StaticResource CompactIconButtonStyle}" VerticalAlignment="Center"
+                            Click="TextAlignLeft_Click">
+                        <Button.Resources>
+                            <Style TargetType="Path">
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TextAlignment}" Value="Left">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Accent.Base}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Resources>
+                        <Path Data="M3,3H21V5H3V3M3,7H15V9H3V7M3,11H21V13H3V11M3,15H15V17H3V15M3,19H21V21H3V19Z"
+                              Stretch="Uniform" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                    <Button Width="24" Height="24" Padding="4" Margin="0,0,2,0" ToolTip="Align center"
+                            Style="{StaticResource CompactIconButtonStyle}" VerticalAlignment="Center"
+                            Click="TextAlignCenter_Click">
+                        <Button.Resources>
+                            <Style TargetType="Path">
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TextAlignment}" Value="Center">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Accent.Base}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Resources>
+                        <Path Data="M3,3H21V5H3V3M7,7H17V9H7V7M3,11H21V13H3V11M7,15H17V17H7V15M3,19H21V21H3V19Z"
+                              Stretch="Uniform" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+                    <Button Width="24" Height="24" Padding="4" Margin="0,0,12,0" ToolTip="Align right"
+                            Style="{StaticResource CompactIconButtonStyle}" VerticalAlignment="Center"
+                            Click="TextAlignRight_Click">
+                        <Button.Resources>
+                            <Style TargetType="Path">
+                                <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding TextAlignment}" Value="Right">
+                                        <Setter Property="Fill" Value="{DynamicResource Brush.Accent.Base}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Resources>
+                        <Path Data="M3,3H21V5H3V3M9,7H21V9H9V7M3,11H21V13H3V11M9,15H21V17H9V15M3,19H21V21H3V19Z"
+                              Stretch="Uniform" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Button>
+
+                    <Rectangle Width="2" Style="{StaticResource SeparatorRectangleStyle}" Margin="0,4,8,4" />
+
+                    <!-- Hint: idle state -->
+                    <TextBlock Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" FontStyle="Italic">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTextEditing}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                        <Run Text="&#xE104;" FontFamily="Segoe MDL2 Assets" BaselineAlignment="Center" />
+                        <Run Text=" Click to create text" BaselineAlignment="Center" />
+                    </TextBlock>
+
+                    <!-- Hint: active typing state -->
+                    <TextBlock Foreground="{DynamicResource Brush.Accent.Base}" VerticalAlignment="Center" FontWeight="SemiBold">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsTextEditing}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                        <Run Text="&#xE104;" FontFamily="Segoe MDL2 Assets" BaselineAlignment="Center" />
+                        <Run Text=" Typing — press Esc to commit" BaselineAlignment="Center" />
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- 5. Selection hints (Marquee, Lasso, MagicWand) -->
+                <StackPanel Orientation="Horizontal"
+                            Grid.Column="2">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility"
+                                    Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Marquee">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="Lasso">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}"
+                                             Value="MagicWand">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- Selection Info (shown when selection exists) -->
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,12,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectionService.HasActiveSelection}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBox Text="{Binding Scale, UpdateSourceTrigger=PropertyChanged}"
+                                 Width="32"
+                                 VerticalAlignment="Center"
+                                 HorizontalContentAlignment="Center"
+                                 VerticalContentAlignment="Center"
+                                 FontSize="12"
+                                 FontWeight="Bold"
+                                 Foreground="{DynamicResource Brush.Accent.Base}"
+                                 Style="{StaticResource NumericTextBoxStyle}"
+                                 behaviors:NumericScrubBehavior.MinValue="1"
+                                 behaviors:NumericScrubBehavior.MaxValue="10"
+                                 PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                 ToolTip="Preview Scale multiplier" />
+                        <TextBlock Text="&#xE727;"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   Foreground="{DynamicResource Brush.Accent.Base}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   FontSize="14" />
+                        <TextBlock Text="{Binding SelectionInfo}"
+                                   Foreground="{DynamicResource Brush.Accent.Base}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,12,0" />
+
+                        <!-- Quick Actions -->
+                        <Button Command="{Binding CutSelectionCommand}"
+                                Style="{StaticResource CompactIconButtonStyle}"
+                                Margin="0,0,4,0"
+                                ToolTip="Cut selection (Ctrl+X)">
+                            <TextBlock Text="&#xE8B8;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14" />
+                        </Button>
+                        <Button Command="{Binding CopySelectionCommand}"
+                                Style="{StaticResource CompactIconButtonStyle}"
+                                Margin="0,0,4,0"
+                                ToolTip="Copy selection (Ctrl+C)">
+                            <TextBlock Text="&#xE8C8;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14" />
+                        </Button>
+                        <Button Command="{Binding NewLayerFromSelectionCommand}"
+                                Style="{StaticResource CompactIconButtonStyle}"
+                                Margin="0,0,4,0"
+                                ToolTip="New layer from selection (Ctrl+Shift+J)">
+                            <TextBlock Text="&#xE8B9;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14" />
+                        </Button>
+                        <Button Command="{Binding DeleteSelectionCommand}"
+                                Style="{StaticResource CompactIconButtonStyle}"
+                                Margin="0,0,8,0"
+                                ToolTip="Delete selection (Del)">
+                            <TextBlock Text="&#xE74D;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="14" />
+                        </Button>
+
+                        <Rectangle Width="2"
+                                   Style="{StaticResource SeparatorRectangleStyle}"
+                                   Margin="0,4,12,4" />
+                    </StackPanel>
+
+                    <!-- Transform button (context-aware: enabled only when a selection exists) -->
+                    <Button Command="{Binding BeginSelectionTransformCommand}"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Height="26"
+                            Padding="8,0"
+                            Margin="0,0,12,0"
+                            ToolTip="Transform selection (Ctrl+T) — drag handles to scale">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE740;"
+                                       FontFamily="Segoe MDL2 Assets"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0" />
+                            <TextBlock Text="Transform"
+                                       VerticalAlignment="Center"
+                                       Foreground="{DynamicResource Brush.Text.Primary}" />
+                        </StackPanel>
+                    </Button>
+
+                    <Rectangle Width="2"
+                               Style="{StaticResource SeparatorRectangleStyle}"
+                               Margin="0,4,12,4" />
+
+                    <!-- Paste Mode (shown only when selection is floating) -->
+                    <StackPanel Orientation="Horizontal"
+                                Margin="0,0,12,0">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelectionFloating}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+
+                        <TextBlock Text="Paste:"
+                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   FontSize="12" />
+
+                        <ComboBox Width="105"
+                                  Height="26"
+                                  FontSize="12"
+                                  Style="{StaticResource ModernComboBoxStyle}"
+                                  ItemsSource="{Binding Source={StaticResource FloatingPasteModeOptions}}"
+                                  SelectedItem="{Binding FloatingPasteMode}" />
+
+                        <Rectangle Width="2"
+                                   Style="{StaticResource SeparatorRectangleStyle}"
+                                   Margin="12,4,12,4" />
+                    </StackPanel>
+
+                    <TextBlock Text="&#xE9A6;"
+                               FontFamily="Segoe MDL2 Assets"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <TextBlock Text="Del to erase • Esc to clear • Shift/Alt/Ctrl to combine"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               VerticalAlignment="Center"
+                               FontStyle="Italic" />
+                </StackPanel>
+
+                <!-- Global Symmetry controls (Right-aligned in Column 3) -->
+                <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Visible" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Marquee">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Lasso">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="MagicWand">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Move">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentTool}" Value="Text">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <Rectangle Width="2" Style="{StaticResource SeparatorRectangleStyle}" Margin="12,4,8,4" />
+                    <TextBlock Text="SYMMETRY" Style="{StaticResource HeaderStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <ToggleButton IsChecked="{Binding IsSymmetryVerticalEnabled}"
+                                  ToolTip="Vertical Symmetry"
+                                  Width="26" Height="26"
+                                  Margin="0,0,2,0" Padding="0"
+                                  Style="{StaticResource ModernToggleButtonStyle}">
+                        <Grid Width="14" Height="14">
+                            <Line X1="7" Y1="0" X2="7" Y2="14" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.5" StrokeDashArray="2,2"/>
+                            <Path Data="M5,3 V11 L1,7 Z M9,3 V11 L13,7 Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                        </Grid>
+                    </ToggleButton>
+                    <ToggleButton IsChecked="{Binding IsSymmetryHorizontalEnabled}"
+                                  ToolTip="Horizontal Symmetry"
+                                  Width="26" Height="26"
+                                  Margin="0,0,8,0" Padding="0"
+                                  Style="{StaticResource ModernToggleButtonStyle}">
+                        <Grid Width="14" Height="14">
+                            <Line X1="0" Y1="7" X2="14" Y2="7" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}" StrokeThickness="1.5" StrokeDashArray="2,2"/>
+                            <Path Data="M3,5 H11 L7,1 Z M3,9 H11 L7,13 Z" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ToggleButton}}"/>
+                        </Grid>
+                    </ToggleButton>
+                    <Button Command="{Binding ResetSymmetryCommand}"
+                            ToolTip="Reset symmetry center to canvas center"
+                            Width="26" Height="26" Padding="0"
+                            Style="{StaticResource ModernButtonStyle}">
+                        <Grid Width="14" Height="14">
+                            <Path Data="M7,0 V3 M7,11 V14 M0,7 H3 M11,7 H14 M4,4 H10 V10 H4 Z" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Fill="Transparent"/>
+                        </Grid>
+                    </Button>
+                </StackPanel>
+
+            </Grid>
+        </Border>
+
+        <!-- Canvas -->
+        <Border Grid.Row="1"
+                Style="{StaticResource PanelStyle}"
+                Padding="0"
+                ClipToBounds="True">
+            <ScrollViewer x:Name="MainScrollViewer" x:FieldModifier="public"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          Background="{DynamicResource Brush.Surface.Base}">
+                <Grid Background="Transparent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="2000" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="2000" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2000" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="2000" />
+                    </Grid.ColumnDefinitions>
+                    
+                    <Border Grid.Row="1" Grid.Column="1"
+                            Background="{DynamicResource Brush.Canvas.Base}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                        <Border.LayoutTransform>
+                            <ScaleTransform ScaleX="{Binding ZoomLevel}"
+                                            ScaleY="{Binding ZoomLevel}" />
+                        </Border.LayoutTransform>
+
+                        <Grid x:Name="PixelGridContainer" x:FieldModifier="public"
+                              Width="{Binding CanvasDisplayWidth}"
+                              Height="{Binding CanvasDisplayHeight}">
+
+                        <!-- Pixel bitmap -->
+                        <Image x:Name="CanvasImage" x:FieldModifier="public"
+                               Source="{Binding CanvasBitmap}"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               Stretch="Fill"
+                               HorizontalAlignment="Stretch"
+                               VerticalAlignment="Stretch" />
+
+                        <!-- Grid lines overlay -->
+                        <Rectangle IsHitTestVisible="False">
+                            <Rectangle.Style>
+                                <Style TargetType="Rectangle">
+                                    <Setter Property="Visibility"
+                                            Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ShowGridLines}"
+                                                     Value="False">
+                                            <Setter Property="Visibility"
+                                                    Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Rectangle.Style>
+                            <Rectangle.Fill>
+                                <DrawingBrush Viewport="{Binding GridViewport}"
+                                              ViewportUnits="Absolute"
+                                              TileMode="Tile">
+                                    <DrawingBrush.Drawing>
+                                        <GeometryDrawing>
+                                            <GeometryDrawing.Geometry>
+                                                <RectangleGeometry Rect="{Binding GridViewport}" />
+                                            </GeometryDrawing.Geometry>
+                                            <GeometryDrawing.Pen>
+                                                <Pen Brush="{DynamicResource Brush.Canvas.Grid}"
+                                                     Thickness="{Binding DynamicStrokeThickness}" />
+                                            </GeometryDrawing.Pen>
+                                        </GeometryDrawing>
+                                    </DrawingBrush.Drawing>
+                                </DrawingBrush>
+                            </Rectangle.Fill>
+                        </Rectangle>
+
+                        <!-- Selection overlays -->
+                        <Canvas ClipToBounds="False"
+                                HorizontalAlignment="Stretch"
+                                VerticalAlignment="Stretch">
+
+                            <!-- Solid backing stroke for contrast against both light/dark pixels -->
+                            <Rectangle Stroke="{DynamicResource Brush.Surface.Base}"
+                                       StrokeThickness="{Binding SelectionStrokeThickness}"
+                                       Visibility="{Binding Visibility, ElementName=MarqueeOverlay}"
+                                       Width="{Binding Width, ElementName=MarqueeOverlay}"
+                                       Height="{Binding Height, ElementName=MarqueeOverlay}"
+                                       Canvas.Left="{Binding (Canvas.Left), ElementName=MarqueeOverlay}"
+                                       Canvas.Top="{Binding (Canvas.Top), ElementName=MarqueeOverlay}"
+                                       RenderTransform="{Binding RenderTransform, ElementName=MarqueeOverlay}"
+                                       IsHitTestVisible="False" />
+
+                            <Rectangle x:Name="MarqueeOverlay" x:FieldModifier="public"
+                                       Stroke="{DynamicResource Brush.Accent.PreviewBorder}"
+                                       StrokeThickness="{Binding SelectionStrokeThickness}"
+                                       StrokeDashArray="4,4"
+                                       Visibility="Hidden"
+                                       IsHitTestVisible="False" />
+
+                            <!-- Solid backing stroke for ellipse -->
+                            <Ellipse Stroke="{DynamicResource Brush.Surface.Base}"
+                                     StrokeThickness="{Binding SelectionStrokeThickness}"
+                                     Visibility="{Binding Visibility, ElementName=EllipseOverlay}"
+                                     Width="{Binding Width, ElementName=EllipseOverlay}"
+                                     Height="{Binding Height, ElementName=EllipseOverlay}"
+                                     Canvas.Left="{Binding (Canvas.Left), ElementName=EllipseOverlay}"
+                                     Canvas.Top="{Binding (Canvas.Top), ElementName=EllipseOverlay}"
+                                     RenderTransform="{Binding RenderTransform, ElementName=EllipseOverlay}"
+                                     IsHitTestVisible="False" />
+
+                            <Ellipse x:Name="EllipseOverlay" x:FieldModifier="public"
+                                     Stroke="{DynamicResource Brush.Accent.PreviewBorder}"
+                                     StrokeThickness="{Binding SelectionStrokeThickness}"
+                                     StrokeDashArray="4,4"
+                                     Visibility="Hidden"
+                                     IsHitTestVisible="False" />
+
+                            <!-- Solid backing stroke for lasso -->
+                            <Path Stroke="{DynamicResource Brush.Surface.Base}"
+                                  StrokeThickness="{Binding SelectionStrokeThickness}"
+                                  Visibility="{Binding Visibility, ElementName=LassoOverlay}"
+                                  Data="{Binding Data, ElementName=LassoOverlay}"
+                                  RenderTransform="{Binding RenderTransform, ElementName=LassoOverlay}"
+                                  IsHitTestVisible="False" />
+
+                            <!-- Light transparent yellow fill shows the lasso interior -->
+                            <Path x:Name="LassoOverlay" x:FieldModifier="public"
+                                  Stroke="{DynamicResource Brush.Accent.PreviewBorder}"
+                                  StrokeThickness="{Binding SelectionStrokeThickness}"
+                                  StrokeDashArray="4,4"
+                                  Fill="{DynamicResource Brush.Common.LassoFill}"
+                                  Visibility="Hidden"
+                                  IsHitTestVisible="False" />
+
+                            <!-- Text Tool Blinking Caret -->
+                            <Rectangle x:Name="TextToolCaret"
+                                       Fill="{DynamicResource Brush.Accent.Base}"
+                                       Width="2"
+                                       Height="{Binding TextToolCaretHeight}"
+                                       Canvas.Left="{Binding TextToolCaretX}"
+                                       Canvas.Top="{Binding TextToolCaretY}"
+                                       IsHitTestVisible="False">
+                                <Rectangle.Style>
+                                    <Style TargetType="Rectangle">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsTextEditing}" Value="True">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Rectangle.Style>
+                                <Rectangle.Triggers>
+                                    <EventTrigger RoutedEvent="Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0" Duration="0:0:0.5" AutoReverse="True" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Rectangle.Triggers>
+                            </Rectangle>
+
+                            <!-- Transform handles (decorative; hit-testing is in MainWindow) -->
+                            <Canvas x:Name="TransformHandlesLayer" x:FieldModifier="public"
+                                    IsHitTestVisible="False"
+                                    ClipToBounds="False"
+                                    HorizontalAlignment="Stretch"
+                                    VerticalAlignment="Stretch" />
+
+                            <!-- Brush cursor overlay (pixel-accurate bitmap) -->
+                            <Image x:Name="BrushCursorOverlay" x:FieldModifier="public"
+                                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                   Stretch="Fill"
+                                   Visibility="Hidden"
+                                   IsHitTestVisible="False" />
+
+                            <!-- Vertical Symmetry -->
+                            <Grid x:Name="VerticalSymmetryOverlay"
+                                  Width="16" Height="{Binding CanvasDisplayHeight}"
+                                  Margin="-8,0,0,0"
+                                  HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsSymmetryVisible}" Value="True" />
+                                                    <Condition Binding="{Binding IsSymmetryVerticalEnabled}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.RenderTransform>
+                                    <TranslateTransform X="{Binding VerticalSymmetryLinePosition}" />
+                                </Grid.RenderTransform>
+
+                                <Line X1="8" X2="8" Y1="0" Y2="{Binding CanvasDisplayHeight}"
+                                      Stroke="Blue" StrokeThickness="1"
+                                      IsHitTestVisible="False" />
+
+                                <Thumb HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,-7,0,0" Cursor="SizeWE" DragDelta="VerticalSymmetryHandle_DragDelta" Style="{StaticResource SymmetryHandleStyle}" Tag="SymmetryHandle" />
+                                <Thumb HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,-7" Cursor="SizeWE" DragDelta="VerticalSymmetryHandle_DragDelta" Style="{StaticResource SymmetryHandleStyle}" Tag="SymmetryHandle" />
+                            </Grid>
+
+                            <!-- Horizontal Symmetry -->
+                            <Grid x:Name="HorizontalSymmetryOverlay"
+                                  Height="16" Width="{Binding CanvasDisplayWidth}"
+                                  Margin="0,-8,0,0"
+                                  HorizontalAlignment="Left" VerticalAlignment="Top">
+                                <Grid.Style>
+                                    <Style TargetType="Grid">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsSymmetryVisible}" Value="True" />
+                                                    <Condition Binding="{Binding IsSymmetryHorizontalEnabled}" Value="True" />
+                                                </MultiDataTrigger.Conditions>
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Grid.Style>
+                                <Grid.RenderTransform>
+                                    <TranslateTransform Y="{Binding HorizontalSymmetryLinePosition}" />
+                                </Grid.RenderTransform>
+
+                                <Line Y1="8" Y2="8" X1="0" X2="{Binding CanvasDisplayWidth}"
+                                      Stroke="Blue" StrokeThickness="1"
+                                      IsHitTestVisible="False" />
+
+                                <Thumb HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-7,0,0,0" Cursor="SizeNS" DragDelta="HorizontalSymmetryHandle_DragDelta" Style="{StaticResource SymmetryHandleStyle}" Tag="SymmetryHandle" />
+                                <Thumb HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-7,0" Cursor="SizeNS" DragDelta="HorizontalSymmetryHandle_DragDelta" Style="{StaticResource SymmetryHandleStyle}" Tag="SymmetryHandle" />
+                            </Grid>
+
+                            <!-- Crosshair lines (follow mouse smoothly) -->
+                            <Line x:Name="CrosshairH" x:FieldModifier="public"
+                                  StrokeThickness="0.5"
+                                  Visibility="Hidden"
+                                  IsHitTestVisible="False"
+                                  SnapsToDevicePixels="True" />
+                            <Line x:Name="CrosshairV" x:FieldModifier="public"
+                                  StrokeThickness="0.5"
+                                  Visibility="Hidden"
+                                  IsHitTestVisible="False"
+                                  SnapsToDevicePixels="True" />
+                        </Canvas>
+                    </Grid>
+                    </Border>
+                </Grid>
+            </ScrollViewer>
+        </Border>
+
+        <!-- Bottom action bar -->
+        <Border Grid.Row="2"
+                Style="{StaticResource PanelStyle}"
+                Margin="0,8,0,0"
+                Padding="8,4">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- History & Actions -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal">
+                    
+                    <!-- Undo / Redo -->
+                    <Button Command="{Binding UndoCommand}"
+                            ToolTip="Undo (Ctrl+Z)"
+                            Style="{StaticResource CompactIconButtonStyle}"
+                            Margin="0,0,4,0">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M7.6999 15.0077C7.41861 15.2889 7.03715 15.4469 6.63941 15.4469C6.24166 15.4469 5.8602 15.2889 5.5789 15.0077L0.857904 10.2827C0.308498 9.73289 -0.00012207 8.98744 -0.00012207 8.21019C-0.00012207 7.43294 0.308498 6.68749 0.857904 6.13769L5.5829 1.4127C5.86832 1.15329 6.24269 1.0138 6.62826 1.02318C7.01383 1.03256 7.38097 1.1901 7.65343 1.46308C7.9259 1.73605 8.08274 2.10349 8.09139 2.48908C8.10005 2.87466 7.95985 3.24877 7.6999 3.53369L4.4669 6.70069H18.6799C20.0903 6.70201 21.4425 7.2628 22.4399 8.25999C23.4373 9.25718 23.9983 10.6093 23.9999 12.0197V18.7007C23.9986 20.1107 23.4379 21.4626 22.4408 22.4596C21.4438 23.4566 20.0919 24.0173 18.6819 24.0187H5.3179C4.92008 24.0187 4.53855 23.8606 4.25724 23.5793C3.97594 23.298 3.8179 22.9165 3.8179 22.5187C3.8179 22.1208 3.97594 21.7393 4.25724 21.458C4.53855 21.1767 4.92008 21.0187 5.3179 21.0187H18.6809C19.2956 21.0181 19.885 20.7738 20.3197 20.3392C20.7545 19.9047 20.9991 19.3154 20.9999 18.7007V12.0197C20.9994 11.4046 20.7547 10.8149 20.3197 10.3801C19.8848 9.94533 19.295 9.70095 18.6799 9.70069H4.5219L7.6999 12.8867C7.98111 13.168 8.13908 13.5494 8.13908 13.9472C8.13908 14.3449 7.98111 14.7264 7.6999 15.0077Z" />
+                    </Button>
+                    <Button Command="{Binding RedoCommand}"
+                            ToolTip="Redo (Ctrl+Y)"
+                            Style="{StaticResource CompactIconButtonStyle}">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M16.3 15.0069C16.5813 15.2881 16.9628 15.4461 17.3605 15.4461C17.7582 15.4461 18.1397 15.2881 18.421 15.0069L23.147 10.2819C23.6959 9.73183 24.0042 8.98648 24.0042 8.20938C24.0042 7.43229 23.6959 6.68694 23.147 6.13688L18.416 1.41188C18.2795 1.26093 18.1138 1.13932 17.9288 1.05445C17.7439 0.96959 17.5436 0.923245 17.3402 0.918239C17.1367 0.913234 16.9344 0.949674 16.7455 1.02534C16.5566 1.10101 16.3851 1.21432 16.2414 1.35838C16.0976 1.50244 15.9847 1.67424 15.9095 1.86331C15.8343 2.05239 15.7983 2.2548 15.8038 2.45822C15.8093 2.66164 15.8561 2.86181 15.9414 3.04656C16.0267 3.23131 16.1487 3.39678 16.3 3.53288L19.532 6.69988H5.319C3.90888 6.70174 2.55705 7.26272 1.55994 8.25983C0.56284 9.25693 0.00185211 10.6088 0 12.0189L0 18.6999C0.00158806 20.1098 0.562386 21.4615 1.55936 22.4585C2.55633 23.4555 3.90807 24.0163 5.318 24.0179H18.682C19.0798 24.0179 19.4614 23.8598 19.7427 23.5785C20.024 23.2972 20.182 22.9157 20.182 22.5179C20.182 22.1201 20.024 21.7385 19.7427 21.4572C19.4614 21.1759 19.0798 21.0179 18.682 21.0179H5.318C4.70347 21.0171 4.11434 20.7726 3.6798 20.3381C3.24527 19.9035 3.00079 19.3144 3 18.6999V12.0189C3.00053 11.404 3.24502 10.8145 3.6798 10.3797C4.11459 9.94491 4.70413 9.70041 5.319 9.69988H19.478L16.3 12.8859C16.0188 13.1672 15.8608 13.5486 15.8608 13.9464C15.8608 14.3441 16.0188 14.7256 16.3 15.0069Z" />
+                    </Button>
+
+                    <Rectangle Width="2"
+                               Style="{StaticResource SeparatorRectangleStyle}"
+                               Margin="12,4" />
+
+                    <!-- Canvas Actions -->
+                    <Button Command="{Binding InvertCommand}"
+                            ToolTip="Invert Canvas"
+                            Style="{StaticResource CompactIconButtonStyle}"
+                            Margin="0,0,4,0">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M2.88594 6.83628C3.04922 6.8368 3.21014 6.79734 3.35465 6.72134C3.49915 6.64534 3.62286 6.53511 3.71494 6.40028C4.45836 5.29984 5.41321 4.35824 6.52394 3.63028C6.63373 3.55805 6.72821 3.46491 6.802 3.35616C6.87579 3.24742 6.92743 3.12521 6.95399 2.99651C6.98055 2.86781 6.9815 2.73513 6.95678 2.60607C6.93206 2.477 6.88217 2.35406 6.80994 2.24428C6.73771 2.13449 6.64457 2.04001 6.53583 1.96622C6.42709 1.89243 6.30488 1.84078 6.17617 1.81423C6.04747 1.78767 5.9148 1.78672 5.78573 1.81144C5.65666 1.83615 5.53373 1.88605 5.42394 1.95828C4.09389 2.83011 2.9504 3.95762 2.05994 5.27528C1.95813 5.42552 1.89912 5.60063 1.88924 5.78185C1.87936 5.96308 1.91899 6.14357 2.00387 6.30398C2.08876 6.4644 2.2157 6.59869 2.37109 6.69246C2.52647 6.78623 2.70445 6.83595 2.88594 6.83628Z M2 11.9998C1.99982 11.3387 2.06446 10.6792 2.193 10.0308C2.22083 9.90123 2.22263 9.76742 2.19829 9.63715C2.17395 9.50688 2.12397 9.38275 2.05123 9.27197C1.9785 9.16119 1.88448 9.06597 1.77462 8.99185C1.66477 8.91773 1.54127 8.86618 1.41132 8.8402C1.28137 8.81422 1.14755 8.81434 1.01764 8.84053C0.887732 8.86673 0.764326 8.91848 0.654595 8.99279C0.544864 9.06709 0.450996 9.16247 0.378449 9.27337C0.305902 9.38427 0.256122 9.50849 0.232002 9.6388C-0.0779852 11.1996 -0.0779852 12.806 0.232002 14.3668C0.278108 14.5927 0.400839 14.7957 0.579422 14.9415C0.758005 15.0872 0.981472 15.1668 1.212 15.1668C1.27913 15.1671 1.34612 15.1607 1.412 15.1478C1.67205 15.0957 1.90074 14.9424 2.04777 14.7217C2.19479 14.5009 2.24812 14.2308 2.196 13.9708C2.06625 13.3218 2.0006 12.6616 2 11.9998Z M6.52809 20.3722C5.41713 19.6458 4.4619 18.7055 3.71809 17.6062C3.64435 17.4974 3.54992 17.4043 3.44018 17.3321C3.33045 17.2598 3.20756 17.2099 3.07853 17.1851C2.81795 17.1352 2.54818 17.1908 2.32859 17.3397C2.10899 17.4886 1.95754 17.7186 1.90756 17.9792C1.85758 18.2398 1.91317 18.5096 2.06209 18.7292C2.95436 20.0468 4.09995 21.1737 5.43209 22.0442C5.65381 22.19 5.92439 22.2419 6.18432 22.1882C6.44424 22.1346 6.67222 21.9799 6.81809 21.7582C6.96395 21.5365 7.01577 21.2659 6.96214 21.0059C6.9085 20.746 6.75381 20.518 6.53209 20.3722H6.52809Z M12 0C11.2718 0.00124052 10.5452 0.0681785 9.82898 0.2C9.58317 0.244507 9.36292 0.379402 9.21157 0.578139C9.06023 0.776877 8.98874 1.02506 9.01119 1.27386C9.03364 1.52265 9.14839 1.75404 9.33286 1.92247C9.51734 2.09091 9.75817 2.18421 10.008 2.184C10.0686 2.18355 10.1292 2.1782 10.189 2.168C10.7863 2.05729 11.3925 2.00106 12 2V22C11.3926 22.0003 10.7864 21.9454 10.189 21.836C9.928 21.7883 9.65876 21.8461 9.44046 21.9969C9.22217 22.1477 9.07272 22.379 9.02498 22.64C8.97724 22.901 9.03513 23.1702 9.1859 23.3885C9.33668 23.6068 9.568 23.7563 9.82898 23.804C11.5596 24.1206 13.3387 24.053 15.0404 23.6062C16.7421 23.1593 18.3248 22.344 19.6766 21.218C21.0284 20.092 22.1164 18.6827 22.8634 17.0898C23.6105 15.4969 23.9985 13.7594 24 12C23.9965 8.81846 22.7311 5.76821 20.4815 3.51852C18.2318 1.26883 15.1815 0.00344108 12 0V0Z" />
+                    </Button>
+                    <Button Command="{Binding ClearCommand}"
+                            ToolTip="Clear Canvas"
+                            Style="{StaticResource CompactIconButtonStyle}">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M23 4.5C23 3.67158 22.3285 3 21.5 3H17.724C17.0921 1.20736 15.4007 0.00609375 13.5 0H10.5C8.59928 0.00609375 6.90789 1.20736 6.27602 3H2.5C1.67158 3 1 3.67158 1 4.5C1 5.32842 1.67158 6 2.5 6H3.00002V18.5C3.00002 21.5376 5.46245 24 8.5 24H15.5C18.5376 24 21 21.5376 21 18.5V6H21.5C22.3285 6 23 5.32842 23 4.5ZM18 18.5C18 19.8807 16.8807 21 15.5 21H8.5C7.1193 21 6.00002 19.8807 6.00002 18.5V6H18V18.5Z M9.5 18C10.3284 18 11 17.3284 11 16.5V10.5C11 9.67158 10.3284 9 9.5 9C8.67158 9 8 9.67158 8 10.5V16.5C8 17.3284 8.67158 18 9.5 18Z M14.5 18C15.3284 18 16 17.3284 16 16.5V10.5C16 9.67158 15.3284 9 14.5 9C13.6716 9 13 9.67158 13 10.5V16.5C13 17.3284 13.6716 18 14.5 18Z" />
+                    </Button>
+                    
+                    <Rectangle Width="2"
+                               Style="{StaticResource SeparatorRectangleStyle}"
+                               Margin="12,4" />
+
+                    <Button Command="{Binding OutlineCommand}"
+                            ToolTip="Outline Layer..."
+                            Style="{StaticResource CompactIconButtonStyle}">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M3.75 3C3.33579 3 3 3.33579 3 3.75V20.25C3 20.6642 3.33579 21 3.75 21H20.25C20.6642 21 21 20.6642 21 20.25V3.75C21 3.33579 20.6642 3 20.25 3H3.75ZM4.5 4.5H19.5V19.5H4.5V4.5ZM8.25 7.5C7.83579 7.5 7.5 7.83579 7.5 8.25V15.75C7.5 16.1642 7.83579 16.5 8.25 16.5H15.75C16.1642 16.5 16.5 16.1642 16.5 15.75V8.25C16.5 7.83579 16.1642 7.5 15.75 7.5H8.25ZM9 9H15V15H9V9Z" />
+                    </Button>
+                </StackPanel>
+
+                <!-- View Options & Zoom -->
+                <StackPanel Grid.Column="2"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="0,0,4,0">
+                    <CheckBox Content="Show Grid"
+                              IsChecked="{Binding ShowGridLines}"
+                              Foreground="{DynamicResource Brush.Text.Muted}"
+                              ToolTip="Toggle Grid Preview"
+                              VerticalAlignment="Center"
+                              Margin="0,0,12,0" />
+
+                    <CheckBox Content="Brush Outline"
+                              IsChecked="{Binding IsBrushCursorVisible}"
+                              Foreground="{DynamicResource Brush.Text.Muted}"
+                              ToolTip="Toggle Brush Cursor Outline"
+                              VerticalAlignment="Center"
+                              Margin="0,0,16,0" />
+
+                    <Rectangle Width="2"
+                               Style="{StaticResource SeparatorRectangleStyle}"
+                               Margin="0,4,12,4" />
+
+                    <!-- Zoom Controls -->
+                    <TextBlock Text="ZOOM"
+                               Style="{StaticResource HeaderStyle}"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+                    <Button Width="22"
+                            Height="22"
+                            Margin="0,0,4,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="BtnZoomOut_Click"
+                            Padding="0"
+                            ToolTip="Zoom Out (Ctrl+-)">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M23.9999 22.5888L17.7501 16.339C21.2448 12.0649 20.6129 5.76713 16.3389 2.27245C12.0648 -1.22222 5.76703 -0.590391 2.27236 3.68372C-1.22231 7.95783 -0.590478 14.2556 3.68358 17.7502C7.36504 20.7604 12.6574 20.7604 16.3388 17.7502L22.5887 24L23.9999 22.5888ZM10.0272 18.0117C5.61755 18.0117 2.04282 14.437 2.04282 10.0273C2.04282 5.61764 5.61755 2.04291 10.0272 2.04291C14.4369 2.04291 18.0116 5.61764 18.0116 10.0273C18.0066 14.4349 14.4348 18.0068 10.0272 18.0117Z M11.0253 6.03601H9.02918V9.03015H6.03503V11.0263H9.02918V14.0204H11.0253V11.0263H14.0194V9.03015H11.0253V6.03601Z" />
+                    </Button>
+                    <Slider x:Name="ZoomSlider" x:FieldModifier="public"
+                            Width="80"
+                            Minimum="0.1"
+                            Maximum="20.0"
+                            Value="{Binding ZoomLevel}"
+                            TickFrequency="0.1"
+                            IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"
+                            ToolTip="Zoom Level (Ctrl+Scroll)" />
+                    <Button Width="22"
+                            Height="22"
+                            Margin="4,0,4,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="BtnZoomIn_Click"
+                            Padding="0"
+                            ToolTip="Zoom In (Ctrl++)">
+                        <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                              Data="M23.9949 22.583L17.7465 16.3346C21.2404 12.0614 20.6086 5.76496 16.3355 2.27108C12.0624 -1.22279 5.7659 -0.591105 2.27203 3.68202C-1.22185 7.95515 -0.590159 14.2516 3.68297 17.7455C7.36364 20.755 12.6549 20.755 16.3355 17.7455L22.584 23.9939L23.9949 22.583ZM10.0252 18.0069C5.61647 18.0069 2.04253 14.4329 2.04253 10.0243C2.04253 5.61557 5.61647 2.04158 10.0252 2.04158C14.4339 2.04158 18.0079 5.61557 18.0079 10.0243C18.003 14.4309 14.4319 18.002 10.0252 18.0069Z M14.0167 9.0264H6.03406V11.0221H14.0167V9.0264Z" />
+                    </Button>
+                    <TextBlock Text="{Binding ZoomLevel, StringFormat={}{0:F1}x}"
+                               Foreground="{DynamicResource Brush.Accent.Base}"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"
+                               Width="35" />
+                    <Button Content="Reset"
+                            Height="22"
+                            Padding="8,0"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Click="BtnZoomReset_Click"
+                            ToolTip="Reset Zoom (Ctrl+0)" />
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

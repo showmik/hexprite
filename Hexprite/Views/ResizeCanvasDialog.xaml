@@ -1,0 +1,211 @@
+<Window x:Class="Hexprite.Views.ResizeCanvasDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        xmlns:vm="clr-namespace:Hexprite.ViewModels"
+        xmlns:behaviors="clr-namespace:Hexprite.Behaviors"
+        Title="Resize Canvas"
+        Width="400" Height="400"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12" VerticalAlignment="Center"
+                               Margin="8,0,0,0" IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Title -->
+        <TextBlock Grid.Row="0"
+                   Text="RESIZE CANVAS"
+                   Style="{StaticResource HeaderStyle}"
+                   FontSize="14"
+                   Margin="0,0,0,8" />
+
+        <!-- Current size -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Current"
+                       Foreground="{DynamicResource Brush.Text.Muted}"
+                       VerticalAlignment="Center"
+                       Width="60" />
+            <TextBlock x:Name="TxtCurrentSize"
+                       Text="16 × 16"
+                       Foreground="{DynamicResource Brush.Text.Primary}"
+                       VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Preset dropdown -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Preset"
+                       Foreground="{DynamicResource Brush.Text.Primary}"
+                       VerticalAlignment="Center"
+                       Width="60" />
+            <ComboBox x:Name="PresetComboBox"
+                      Width="210"
+                      Height="28"
+                      Style="{StaticResource ModernComboBoxStyle}"
+                      ItemsSource="{x:Static vm:MainViewModel.DisplayPresets}"
+                      SelectionChanged="Preset_SelectionChanged" />
+        </StackPanel>
+
+        <!-- New Width x Height -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="New Size"
+                       Foreground="{DynamicResource Brush.Text.Primary}"
+                       VerticalAlignment="Center"
+                       Width="60" />
+            <TextBox x:Name="TxtWidth"
+                     Text="16"
+                     Width="70" Height="28"
+                     Style="{StaticResource NumericTextBoxStyle}"
+                     behaviors:NumericScrubBehavior.MinValue="1"
+                     behaviors:NumericScrubBehavior.MaxValue="256"
+                     PreviewTextInput="NumberOnly"
+                     Margin="0,0,8,0" />
+            <TextBlock Text="×"
+                       Foreground="{DynamicResource Brush.Text.Muted}"
+                       VerticalAlignment="Center"
+                       Margin="0,0,8,0" />
+            <TextBox x:Name="TxtHeight"
+                     Text="16"
+                     Width="70" Height="28"
+                     Style="{StaticResource NumericTextBoxStyle}"
+                     behaviors:NumericScrubBehavior.MinValue="1"
+                     behaviors:NumericScrubBehavior.MaxValue="256"
+                     PreviewTextInput="NumberOnly" />
+            <TextBlock Text="px"
+                       Foreground="{DynamicResource Brush.Text.Muted}"
+                       VerticalAlignment="Center"
+                       Margin="8,0,0,0" />
+        </StackPanel>
+
+        <!-- Anchor grid -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,0,0,8">
+            <TextBlock Text="Anchor"
+                       Foreground="{DynamicResource Brush.Text.Primary}"
+                       VerticalAlignment="Center"
+                       Width="60" />
+            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                    CornerRadius="4"
+                    Padding="3"
+                    VerticalAlignment="Center"
+                    ToolTip="Where existing content is pinned">
+                <Grid x:Name="AnchorGrid">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <RadioButton Grid.Row="0" Grid.Column="0" GroupName="Anchor"
+                                 Tag="TopLeft" IsChecked="True"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="0" Grid.Column="1" GroupName="Anchor"
+                                 Tag="TopCenter"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="0" Grid.Column="2" GroupName="Anchor"
+                                 Tag="TopRight"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+
+                    <RadioButton Grid.Row="1" Grid.Column="0" GroupName="Anchor"
+                                 Tag="CenterLeft"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="1" Grid.Column="1" GroupName="Anchor"
+                                 Tag="Center"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="1" Grid.Column="2" GroupName="Anchor"
+                                 Tag="CenterRight"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+
+                    <RadioButton Grid.Row="2" Grid.Column="0" GroupName="Anchor"
+                                 Tag="BottomLeft"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="2" Grid.Column="1" GroupName="Anchor"
+                                 Tag="BottomCenter"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                    <RadioButton Grid.Row="2" Grid.Column="2" GroupName="Anchor"
+                                 Tag="BottomRight"
+                                 Style="{StaticResource AnchorDotStyle}"
+                                 Checked="Anchor_Checked" />
+                </Grid>
+            </Border>
+        </StackPanel>
+
+        <!-- OK / Cancel -->
+        <StackPanel Grid.Row="6"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="Cancel"
+                    Width="90" MinHeight="30"
+                    Style="{StaticResource ModernButtonStyle}"
+                    Margin="0,0,8,0"
+                    Click="Cancel_Click" />
+            <Button Content="Resize"
+                    Width="120" MinHeight="30"
+                    Style="{StaticResource AccentButtonStyle}"
+                    Click="Resize_Click"
+                    IsDefault="True" />
+        </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

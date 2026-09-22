@@ -1,0 +1,88 @@
+<Window x:Class="Hexprite.Views.MessageDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="{Binding DialogTitle}"
+        Width="420" SizeToContent="Height"
+        MinHeight="160"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding DialogTitle, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12" VerticalAlignment="Center"
+                               Margin="8,0,0,0" IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" Margin="24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- ICON -->
+                <TextBlock x:Name="IconTextBlock" 
+                           Grid.Column="0" 
+                           FontFamily="Segoe MDL2 Assets" 
+                           FontSize="32" 
+                           Margin="0,0,20,0" 
+                           VerticalAlignment="Center"
+                           Visibility="Collapsed"/>
+
+                <!-- MESSAGE -->
+                <TextBlock x:Name="MessageTextBlock"
+                           Grid.Column="1"
+                           TextWrapping="Wrap"
+                           Foreground="{DynamicResource Brush.Text.Primary}"
+                           VerticalAlignment="Center"
+                           FontSize="14"/>
+            </Grid>
+
+            <!-- BUTTONS -->
+            <StackPanel x:Name="ButtonPanel"
+                        Grid.Row="2"
+                        Orientation="Horizontal"
+                        HorizontalAlignment="Right"
+                        Margin="16,0,16,16">
+                <!-- Buttons added programmatically -->
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Hexprite Pre-Commit Hook: Run impacted tests before allowing commit
+echo "[pre-commit] Running automated test impact check..."
+
+if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -ExecutionPolicy Bypass -File "./scripts/Test-Changed.ps1"
+elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -ExecutionPolicy Bypass -File "./scripts/Test-Changed.ps1"
+else
+    echo "[pre-commit] PowerShell not found, running dotnet test --filter Category!=Fuzz..."
+    dotnet test Hexprite.Tests/Hexprite.Tests.csproj --filter "Category!=Fuzz" --no-build --nologo
+fi
+
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "[pre-commit] ERROR: Tests failed. Commit aborted. Fix test failures or use --no-verify if emergency."
+    exit 1
+fi
+
+echo "[pre-commit] All impacted tests passed cleanly."
+exit 0

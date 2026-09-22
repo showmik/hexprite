@@ -1,0 +1,246 @@
+<Window x:Class="Hexprite.Views.ExportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="Export Image"
+        Width="480" Height="520"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Export Image"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12" VerticalAlignment="Center"
+                               Margin="8,0,0,0" IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- TABS -->
+            <TabControl x:Name="FormatTabControl" Grid.Row="1" Margin="8,8,8,4"
+                        Background="Transparent" BorderThickness="0">
+                <TabControl.Resources>
+                    <Style TargetType="TabItem">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="TabItem">
+                                    <Border Name="Border" Padding="8,4" Margin="0,0,2,0" Background="Transparent" CornerRadius="4,4,0,0">
+                                        <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                          ContentSource="Header" Margin="12,2"/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource Brush.Surface.Panel}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="False">
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+                                        </Trigger>
+                                        <MultiTrigger>
+                                            <MultiTrigger.Conditions>
+                                                <Condition Property="IsSelected" Value="False"/>
+                                                <Condition Property="IsMouseOver" Value="True"/>
+                                            </MultiTrigger.Conditions>
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}"/>
+                                            <Setter TargetName="Border" Property="Background" Value="{DynamicResource Brush.Surface.Hover}"/>
+                                        </MultiTrigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </TabControl.Resources>
+
+                <!-- IMAGE TAB -->
+                <TabItem Header="Image" Tag="Image">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Scale -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="Scale" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="1x" Tag="1" GroupName="ImgScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="2x" Tag="2" GroupName="ImgScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="4x" Tag="4" GroupName="ImgScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked" IsChecked="True"/>
+                                <RadioButton Content="8x" Tag="8" GroupName="ImgScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton x:Name="RbImgScaleCustom" Content="Custom:" GroupName="ImgScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <TextBox x:Name="TxtImgScaleCustom" Text="10" Width="40" Height="24" Style="{StaticResource NumericTextBoxStyle}" VerticalContentAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=RbImgScaleCustom}" TextChanged="CustomScale_TextChanged" PreviewTextInput="NumericOnly_PreviewTextInput" GotKeyboardFocus="TextBox_GotKeyboardFocus"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Format -->
+                        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                            <TextBlock Text="Format" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton x:Name="RbPng" Content="PNG" IsChecked="True" GroupName="ImgFormat" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Format_Checked"/>
+                                <RadioButton x:Name="RbBmp" Content="BMP" GroupName="ImgFormat" Style="{StaticResource ChipButtonStyle}" Checked="Format_Checked"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Colors -->
+                        <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                            <TextBlock Text="Colors" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <RadioButton x:Name="RbColorsEditor" Content="Editor colors (drawing palette)" GroupName="ImgColors" IsChecked="True" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4"/>
+                            <RadioButton x:Name="RbColorsDisplay" Content="Display preview (e.g. OLED blue glow)" GroupName="ImgColors" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </StackPanel>
+
+                        <!-- Options -->
+                        <StackPanel Grid.Row="3" Margin="0,0,0,8">
+                            <TextBlock Text="Options" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <CheckBox x:Name="ChkImgGrid" Content="Include grid overlay" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4"/>
+                            <CheckBox x:Name="ChkImgSpritesheet" Content="Export all frames as spritesheet" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4" Checked="Options_Checked" Unchecked="Options_Checked"/>
+                            <CheckBox x:Name="ChkImgSeparateFrames" Content="Export all frames as separate files" Foreground="{DynamicResource Brush.Text.Primary}" Checked="Options_Checked" Unchecked="Options_Checked"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="TxtImgResult" Grid.Row="4" Text="Result: 64 × 64 px" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,8,0,0"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- GIF TAB -->
+                <TabItem Header="Animated GIF" Tag="Gif">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Scale -->
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="Scale" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Content="1x" Tag="1" GroupName="GifScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="2x" Tag="2" GroupName="GifScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked" IsChecked="True"/>
+                                <RadioButton Content="4x" Tag="4" GroupName="GifScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="8x" Tag="8" GroupName="GifScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton x:Name="RbGifScaleCustom" Content="Custom:" GroupName="GifScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <TextBox x:Name="TxtGifScaleCustom" Text="10" Width="40" Height="24" Style="{StaticResource NumericTextBoxStyle}" VerticalContentAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=RbGifScaleCustom}" TextChanged="CustomScale_TextChanged" PreviewTextInput="NumericOnly_PreviewTextInput" GotKeyboardFocus="TextBox_GotKeyboardFocus"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Playback -->
+                        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                            <TextBlock Text="Playback" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                <TextBlock Text="Framerate:" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" Width="80"/>
+                                <TextBox x:Name="TxtGifFps" Text="12" Width="40" Height="24" Style="{StaticResource NumericTextBoxStyle}" VerticalContentAlignment="Center" Margin="0,0,8,0" TextChanged="CustomScale_TextChanged" PreviewTextInput="NumericOnly_PreviewTextInput" GotKeyboardFocus="TextBox_GotKeyboardFocus"/>
+                                <TextBlock Text="fps" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="Loop:" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" Width="80"/>
+                                <RadioButton x:Name="RbGifLoopInf" Content="Infinite" GroupName="GifLoop" IsChecked="True" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                <RadioButton x:Name="RbGifLoopCount" Content="Play" GroupName="GifLoop" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" Margin="0,0,8,0" Checked="Loop_Checked"/>
+                                <TextBox x:Name="TxtGifLoopCount" Text="1" Width="30" Height="24" Style="{StaticResource NumericTextBoxStyle}" VerticalContentAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=RbGifLoopCount}" PreviewTextInput="NumericOnly_PreviewTextInput" GotKeyboardFocus="TextBox_GotKeyboardFocus"/>
+                                <TextBlock Text="times" Foreground="{DynamicResource Brush.Text.Primary}" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Colors -->
+                        <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                            <TextBlock Text="Colors" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <RadioButton x:Name="RbGifColorsEditor" Content="Editor colors" GroupName="GifColors" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4" Checked="ColorMode_Checked"/>
+                            <RadioButton x:Name="RbGifColorsDisplay" Content="Display preview (Recommended for pixel art GIFs)" IsChecked="True" GroupName="GifColors" Foreground="{DynamicResource Brush.Text.Primary}" Checked="ColorMode_Checked"/>
+                        </StackPanel>
+
+                        <!-- Options -->
+                        <StackPanel Grid.Row="3" Margin="0,0,0,8">
+                            <TextBlock Text="Options" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <CheckBox x:Name="ChkGifAllFrames" Content="Export all frames" IsChecked="True" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4" Checked="Options_Checked" Unchecked="Options_Checked"/>
+                            <CheckBox x:Name="ChkGifTransparent" Content="Transparent background" IsChecked="True" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4"/>
+                            <CheckBox x:Name="ChkGifDeltaOpt" Content="Optimize file size (delta frames)" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4"/>
+                            <CheckBox x:Name="ChkGifDither" Content="Enable dithering (only if using Display preview)" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </StackPanel>
+
+                        <TextBlock x:Name="TxtGifResult" Grid.Row="4" Text="Result: 32×32 px" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,8,0,0"/>
+                    </Grid>
+                </TabItem>
+
+                <!-- PNG SEQUENCE TAB -->
+                <TabItem Header="PNG Sequence" Tag="Sequence">
+                    <Grid Margin="8">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="Sequence Settings" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Exports every frame as a numbered PNG file." Foreground="{DynamicResource Brush.Text.Primary}" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                            <TextBlock Text="Scale" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <RadioButton Content="1x" Tag="1" GroupName="SeqScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="2x" Tag="2" GroupName="SeqScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked" IsChecked="True"/>
+                                <RadioButton Content="4x" Tag="4" GroupName="SeqScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton Content="8x" Tag="8" GroupName="SeqScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <RadioButton x:Name="RbSeqScaleCustom" Content="Custom:" GroupName="SeqScale" Style="{StaticResource ChipButtonStyle}" Margin="0,0,8,0" Checked="Scale_Checked"/>
+                                <TextBox x:Name="TxtSeqScaleCustom" Text="10" Width="40" Height="24" Style="{StaticResource NumericTextBoxStyle}" VerticalContentAlignment="Center" IsEnabled="{Binding IsChecked, ElementName=RbSeqScaleCustom}" TextChanged="CustomScale_TextChanged" PreviewTextInput="NumericOnly_PreviewTextInput" GotKeyboardFocus="TextBox_GotKeyboardFocus"/>
+                            </StackPanel>
+                            
+                            <TextBlock Text="Colors" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,4"/>
+                            <RadioButton x:Name="RbSeqColorsEditor" Content="Editor colors" GroupName="SeqColors" IsChecked="True" Foreground="{DynamicResource Brush.Text.Primary}" Margin="0,0,0,4"/>
+                            <RadioButton x:Name="RbSeqColorsDisplay" Content="Display preview" GroupName="SeqColors" Foreground="{DynamicResource Brush.Text.Primary}"/>
+                        </StackPanel>
+                        <TextBlock x:Name="TxtSeqResult" Grid.Row="1" VerticalAlignment="Bottom" Text="Result: 32×32 px per frame" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,8,0,0"/>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- OK / Cancel -->
+            <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.Panel}" Padding="12" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Brush.Border.Separator}">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancel"
+                            Width="90" MinHeight="30"
+                            Style="{StaticResource ModernButtonStyle}"
+                            Margin="0,0,8,0"
+                            Click="Cancel_Click" />
+                    <Button Content="Export"
+                            Width="120" MinHeight="30"
+                            Style="{StaticResource AccentButtonStyle}"
+                            Click="Export_Click"
+                            IsDefault="True" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

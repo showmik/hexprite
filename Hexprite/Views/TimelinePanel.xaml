@@ -1,0 +1,877 @@
+<UserControl x:Class="Hexprite.Views.TimelinePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:core="clr-namespace:Hexprite.Core"
+             xmlns:behaviors="clr-namespace:Hexprite.Behaviors"
+             mc:Ignorable="d"
+             d:DesignHeight="140"
+             d:DesignWidth="900">
+
+
+    <Border Background="Transparent"
+            Padding="0">
+        <Grid>
+            <Border Grid.Column="0"
+                    Background="{DynamicResource Brush.Surface.Overlay}"
+                    BorderBrush="{DynamicResource Brush.Border.Base}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12,6,12,6">
+                <Border.Effect>
+                    <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                                      Opacity="0.15"
+                                      BlurRadius="10"
+                                      ShadowDepth="2"
+                                      Direction="270" />
+                </Border.Effect>
+                <DockPanel LastChildFill="True">
+                    <!-- Top Toolbar: 3-Zone Balanced Layout -->
+                    <Grid DockPanel.Dock="Top"
+                          Margin="2,2,2,6">
+                        <Grid.ColumnDefinitions>
+                            <!-- Zone 1 (Left): Brand, Toggle, Frame count summary -->
+                            <ColumnDefinition Width="Auto" />
+                            <!-- Zone 2 (Center): Playback Transport & Timing -->
+                            <ColumnDefinition Width="*" />
+                            <!-- Zone 3 (Right): Management Tools, Onion Skin, Batch, Memory -->
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Zone 1 (Left): Title & Identity -->
+                        <StackPanel Grid.Column="0"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="⏱"
+                                       Foreground="{DynamicResource Brush.Text.Muted}"
+                                       FontSize="12"
+                                       Margin="0,0,6,0"
+                                       VerticalAlignment="Center" />
+                            <TextBlock Text="TIMELINE"
+                                       Style="{StaticResource HeaderStyle}"
+                                       Margin="0"
+                                       VerticalAlignment="Center" />
+
+                            <!-- Animation Toggle Switch -->
+                            <CheckBox Content="Enable Animation"
+                                      IsChecked="{Binding IsAnimationEnabled, Mode=TwoWay}"
+                                      Margin="14,0,0,0"
+                                      VerticalAlignment="Center"
+                                      Foreground="{DynamicResource Brush.Text.Primary}" />
+
+                            <!-- Active Frame Summary Pill -->
+                            <Border Margin="12,0,0,0"
+                                    Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="8,2"
+                                    MinWidth="100"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAnimationEnabled}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
+                                <TextBlock Text="{Binding FrameSelectionSummary}"
+                                           FontSize="11"
+                                           FontWeight="Medium"
+                                           TextAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           Typography.NumeralAlignment="Tabular"
+                                           Foreground="{DynamicResource Brush.Text.Muted}" />
+                            </Border>
+
+                            <!-- Single-frame helper note when animation is disabled -->
+                            <TextBlock Text="Animation disabled · Check to create multi-frame sequences"
+                                       FontSize="11"
+                                       Foreground="{DynamicResource Brush.Text.Muted}"
+                                       VerticalAlignment="Center"
+                                       Margin="16,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsAnimationEnabled}" Value="False">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Zone 2 (Center): Playback Transport & Timing -->
+                        <Border Grid.Column="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="8,0">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAnimationEnabled}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <!-- Previous Frame -->
+                                <Button Command="{Binding PreviousFrameCommand}"
+                                        Style="{StaticResource CompactIconButtonStyle}"
+                                        Width="24"
+                                        Height="24"
+                                        VerticalAlignment="Center"
+                                        Margin="0,0,2,0"
+                                        ToolTip="Previous Frame (,)">
+                                    <TextBlock Text="&#xE76B;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11" />
+                                </Button>
+
+                                <!-- Play/Pause Animation -->
+                                <ToggleButton IsChecked="{Binding IsPlaying, Mode=TwoWay}"
+                                              Style="{StaticResource PlayToggleButtonStyle}"
+                                              Width="28"
+                                              Height="28"
+                                              VerticalAlignment="Center"
+                                              Margin="2,0"
+                                              ToolTip="Play/Pause Animation (Space)" />
+
+                                <!-- Next Frame -->
+                                <Button Command="{Binding NextFrameCommand}"
+                                        Style="{StaticResource CompactIconButtonStyle}"
+                                        Width="24"
+                                        Height="24"
+                                        VerticalAlignment="Center"
+                                        Margin="2,0,0,0"
+                                        ToolTip="Next Frame (.)">
+                                    <TextBlock Text="&#xE76C;"
+                                               FontFamily="Segoe MDL2 Assets"
+                                               FontSize="11" />
+                                </Button>
+
+                                <Rectangle Width="1"
+                                           Style="{StaticResource SeparatorRectangleStyle}"
+                                           Margin="6,3"
+                                           VerticalAlignment="Center" />
+
+                                <!-- Playback Direction -->
+                                <ComboBox SelectedItem="{Binding PlaybackDirection}"
+                                          Style="{StaticResource ModernComboBoxStyle}"
+                                          VerticalAlignment="Center"
+                                          Width="86"
+                                          Height="24"
+                                          FontSize="11"
+                                          ToolTip="Playback Direction">
+                                    <core:PlaybackDirection>Forward</core:PlaybackDirection>
+                                    <core:PlaybackDirection>Reverse</core:PlaybackDirection>
+                                    <core:PlaybackDirection>PingPong</core:PlaybackDirection>
+                                </ComboBox>
+
+                                <Rectangle Width="1"
+                                           Style="{StaticResource SeparatorRectangleStyle}"
+                                           Margin="6,3"
+                                           VerticalAlignment="Center" />
+
+                                <!-- FPS Controls -->
+                                <TextBlock Text="FPS:"
+                                           VerticalAlignment="Center"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Margin="2,0,6,0"
+                                           Foreground="{DynamicResource Brush.Text.Muted}" />
+                                <Slider Minimum="1"
+                                        Maximum="60"
+                                        Value="{Binding FrameRateFps}"
+                                        Width="60"
+                                        TickFrequency="1"
+                                        IsSnapToTickEnabled="True"
+                                        VerticalAlignment="Center" />
+                                <TextBox x:Name="FpsTextBox"
+                                         Text="{Binding FrameRateFps, UpdateSourceTrigger=LostFocus}"
+                                         Width="30"
+                                         Height="22"
+                                         VerticalAlignment="Center"
+                                         Margin="6,0,2,0"
+                                         HorizontalContentAlignment="Center"
+                                         VerticalContentAlignment="Center"
+                                         FontSize="11"
+                                         FontWeight="Bold"
+                                         Foreground="{DynamicResource Brush.Accent.Base}"
+                                         Style="{StaticResource NumericTextBoxStyle}"
+                                         behaviors:NumericScrubBehavior.MinValue="1"
+                                         behaviors:NumericScrubBehavior.MaxValue="60"
+                                         ToolTip="Frames per second"
+                                         PreviewTextInput="NumericTextBox_PreviewTextInput"
+                                         LostFocus="FpsTextBox_LostFocus"
+                                         KeyDown="FpsTextBox_KeyDown" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Zone 3 (Right): Management Tools, Onion Skin, Batch, Memory -->
+                        <StackPanel Grid.Column="2"
+                                    Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAnimationEnabled}" Value="False">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+
+                            <!-- Onion Skin Cluster with Color Pips -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4,2">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="Onion:"
+                                               VerticalAlignment="Center"
+                                               Margin="2,0,6,0"
+                                               FontSize="10"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Text.Muted}" />
+                                    <!-- Prev Frame Onion Skin (Red Pip) -->
+                                    <ToggleButton IsChecked="{Binding IsOnionSkinPrevEnabled, Mode=TwoWay}"
+                                                  Style="{StaticResource ModernToggleButtonStyle}"
+                                                  Padding="6,2"
+                                                  Height="22"
+                                                  FontSize="10"
+                                                  VerticalAlignment="Center"
+                                                  Margin="2,0"
+                                                  ToolTip="Toggle Previous Frame Onion Skin (Red Tint)">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="6"
+                                                     Height="6"
+                                                     Fill="#EF4444"
+                                                     Margin="0,0,4,0"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock Text="Prev"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </ToggleButton>
+
+                                    <!-- Next Frame Onion Skin (Green Pip) -->
+                                    <ToggleButton IsChecked="{Binding IsOnionSkinNextEnabled, Mode=TwoWay}"
+                                                  Style="{StaticResource ModernToggleButtonStyle}"
+                                                  Padding="6,2"
+                                                  Height="22"
+                                                  FontSize="10"
+                                                  VerticalAlignment="Center"
+                                                  Margin="2,0"
+                                                  ToolTip="Toggle Next Frame Onion Skin (Green Tint)">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse Width="6"
+                                                     Height="6"
+                                                     Fill="#10B981"
+                                                     Margin="0,0,4,0"
+                                                     VerticalAlignment="Center" />
+                                            <TextBlock Text="Next"
+                                                       FontSize="10"
+                                                       VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Selection & Batch Operations -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4,2"
+                                    Margin="6,0,0,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Content="All"
+                                            Command="{Binding SelectAllFramesCommand}"
+                                            Style="{StaticResource CompactIconButtonStyle}"
+                                            Width="30"
+                                            Height="22"
+                                            ToolTip="Select all frames (Ctrl+A)" />
+                                    <ToggleButton x:Name="BatchButton"
+                                                  Tag="{Binding}"
+                                                  ClickMode="Press"
+                                                  Click="BatchButton_Click"
+                                                  Width="Auto"
+                                                  MinWidth="58"
+                                                  Height="22"
+                                                  Margin="3,0,0,0"
+                                                  Padding="7,0"
+                                                  Cursor="Hand"
+                                                  ToolTip="Apply an operation to selected frames">
+                                        <ToggleButton.Style>
+                                            <Style TargetType="ToggleButton">
+                                                <Setter Property="Background" Value="{DynamicResource Brush.Control.Background}" />
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Base}" />
+                                                <Setter Property="BorderThickness" Value="1" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ToggleButton">
+                                                            <Border Background="{TemplateBinding Background}"
+                                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                                    CornerRadius="4"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                  VerticalAlignment="Center" />
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Hover}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Active}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter Property="Opacity" Value="0.4" />
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ToggleButton.Style>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="Batch"
+                                                       FontSize="10.5"
+                                                       VerticalAlignment="Center" />
+                                            <TextBlock Text="&#xE70D;"
+                                                       FontFamily="Segoe MDL2 Assets"
+                                                       FontSize="7.5"
+                                                       Margin="4,1,0,0"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="{DynamicResource Brush.Text.Muted}" />
+                                        </StackPanel>
+                                        <ToggleButton.ContextMenu>
+                                            <ContextMenu Placement="Bottom" Closed="BatchContextMenu_Closed">
+                                                <MenuItem Header="Invert Active Layer"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.InvertActiveLayer}" />
+                                                <MenuItem Header="Clear Active Layer"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ClearActiveLayer}" />
+                                                <Separator />
+                                                <MenuItem Header="Shift Left"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ShiftLeft}" />
+                                                <MenuItem Header="Shift Right"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ShiftRight}" />
+                                                <MenuItem Header="Shift Up"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ShiftUp}" />
+                                                <MenuItem Header="Shift Down"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ShiftDown}" />
+                                                <Separator />
+                                                <MenuItem Header="Flip Active Layer Horizontally"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.FlipActiveLayerHorizontal}" />
+                                                <MenuItem Header="Flip Active Layer Vertically"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.FlipActiveLayerVertical}" />
+                                                <Separator />
+                                                <MenuItem Header="Clear Entire Selected Frames"
+                                                          Command="{Binding PlacementTarget.Tag.BatchFrameOperationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                          CommandParameter="{x:Static core:FrameBatchOperation.ClearEntireFrame}" />
+                                            </ContextMenu>
+                                        </ToggleButton.ContextMenu>
+                                    </ToggleButton>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Grouped Frame Actions (Add, Duplicate, Delete) -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="4,2"
+                                    Margin="6,0,0,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Button Command="{Binding AddFrameCommand}"
+                                            Style="{StaticResource CompactIconButtonStyle}"
+                                            Width="24"
+                                            Height="22"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,2,0"
+                                            ToolTip="Add Frame">
+                                        <TextBlock Text="&#xE710;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="11" />
+                                    </Button>
+
+                                    <Button Command="{Binding DuplicateFrameCommand}"
+                                            Style="{StaticResource CompactIconButtonStyle}"
+                                            Width="24"
+                                            Height="22"
+                                            VerticalAlignment="Center"
+                                            Margin="0,0,2,0"
+                                            ToolTip="Duplicate Frame">
+                                        <TextBlock Text="&#xE8C8;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="11" />
+                                    </Button>
+
+                                    <Button Command="{Binding DeleteFrameCommand}"
+                                            Style="{StaticResource CompactIconButtonStyle}"
+                                            Width="24"
+                                            Height="22"
+                                            VerticalAlignment="Center"
+                                            ToolTip="Delete Frame">
+                                        <TextBlock Text="&#xE74D;"
+                                                   FontFamily="Segoe MDL2 Assets"
+                                                   FontSize="11" />
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Frame List & Strip Area -->
+                    <Grid x:Name="FrameListClipHost"
+                          ClipToBounds="True"
+                          Margin="0,4,0,0">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsAnimationEnabled}" Value="False">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+
+                        <Border Background="{DynamicResource Brush.Surface.Base}"
+                                BorderBrush="{DynamicResource Brush.Border.Base}"
+                                BorderThickness="1"
+                                CornerRadius="6">
+                            <ScrollViewer x:Name="FrameListScrollViewer"
+                                          HorizontalScrollBarVisibility="Auto"
+                                          VerticalScrollBarVisibility="Disabled"
+                                          PreviewMouseWheel="FrameListScrollViewer_PreviewMouseWheel">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ListBox x:Name="FrameList"
+                                             ItemsSource="{Binding Frames}"
+                                             SelectedIndex="{Binding SelectedFrameIndex, Mode=TwoWay}"
+                                             SelectionMode="Extended"
+                                             SelectionChanged="FrameList_SelectionChanged"
+                                             PreviewKeyDown="FrameList_PreviewKeyDown"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             Padding="4"
+                                             IsEnabled="{Binding IsAnimationEnabled}"
+                                             AllowDrop="True"
+                                             PreviewMouseMove="FrameList_PreviewMouseMove_ArmDrag"
+                                             PreviewMouseLeftButtonDown="FrameList_PreviewMouseLeftButtonDown"
+                                             PreviewMouseRightButtonDown="FrameList_PreviewMouseRightButtonDown"
+                                             PreviewMouseLeftButtonUp="FrameList_PreviewMouseLeftButtonUp"
+                                             PreviewDragOver="FrameList_PreviewDragOver"
+                                             DragLeave="FrameList_DragLeave"
+                                             Drop="FrameList_Drop">
+
+                                        <ListBox.Template>
+                                            <ControlTemplate TargetType="ListBox">
+                                                <ItemsPresenter />
+                                            </ControlTemplate>
+                                        </ListBox.Template>
+
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" />
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Width="70"
+                                                        Height="80"
+                                                        Margin="2,2,4,2"
+                                                        BorderThickness="1.5"
+                                                        CornerRadius="6"
+                                                        Cursor="Hand"
+                                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background"
+                                                                    Value="{DynamicResource Brush.Surface.Panel}" />
+                                                            <Setter Property="BorderBrush"
+                                                                    Value="{DynamicResource Brush.Border.Base}" />
+                                                            <Style.Triggers>
+                                                                <!-- Hover State -->
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding IsMouseOver, RelativeSource={RelativeSource Self}}"
+                                                                                   Value="True" />
+                                                                        <Condition Binding="{Binding IsActive}"
+                                                                                   Value="False" />
+                                                                        <Condition Binding="{Binding IsSelected}"
+                                                                                   Value="False" />
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="BorderBrush"
+                                                                            Value="{DynamicResource Brush.Border.Focus}" />
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource Brush.Surface.Hover}" />
+                                                                </MultiDataTrigger>
+                                                                <!-- Multi-Selected State -->
+                                                                <MultiDataTrigger>
+                                                                    <MultiDataTrigger.Conditions>
+                                                                        <Condition Binding="{Binding IsSelected}"
+                                                                                   Value="True" />
+                                                                        <Condition Binding="{Binding IsActive}"
+                                                                                   Value="False" />
+                                                                    </MultiDataTrigger.Conditions>
+                                                                    <Setter Property="BorderBrush"
+                                                                            Value="{DynamicResource Brush.Accent.Selection}" />
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource Brush.Surface.Active}" />
+                                                                </MultiDataTrigger>
+                                                                <!-- Active Frame State -->
+                                                                <DataTrigger Binding="{Binding IsActive}"
+                                                                             Value="True">
+                                                                    <Setter Property="BorderBrush"
+                                                                            Value="{DynamicResource Brush.Accent.Base}" />
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource Brush.Accent.Muted}" />
+                                                                    <Setter Property="BorderThickness"
+                                                                            Value="2" />
+                                                                </DataTrigger>
+                                                                <!-- Live Playhead Indicator -->
+                                                                <DataTrigger Binding="{Binding IsPlayingBack}"
+                                                                             Value="True">
+                                                                    <Setter Property="BorderBrush"
+                                                                            Value="{DynamicResource Brush.Accent.Base}" />
+                                                                    <Setter Property="BorderThickness"
+                                                                            Value="2" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <Border.ContextMenu>
+                                                        <ContextMenu>
+                                                            <!-- Preset Multipliers -->
+                                                            <MenuItem Header="Set Frame Delay">
+                                                                <MenuItem Header="1x (Normal · 100ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="1" />
+                                                                <MenuItem Header="2x (200ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="2" />
+                                                                <MenuItem Header="3x (300ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="3" />
+                                                                <MenuItem Header="4x (400ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="4" />
+                                                                <MenuItem Header="5x (500ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="5" />
+                                                                <MenuItem Header="8x (800ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="8" />
+                                                                <MenuItem Header="10x (1000ms)"
+                                                                          Command="{Binding PlacementTarget.Tag.SetFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="10" />
+                                                                <Separator />
+                                                                <MenuItem Header="Increase Delay (+1)"
+                                                                          Command="{Binding PlacementTarget.Tag.IncreaseFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding}" />
+                                                                <MenuItem Header="Decrease Delay (-1)"
+                                                                          Command="{Binding PlacementTarget.Tag.DecreaseFrameDelayCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                          CommandParameter="{Binding}" />
+                                                            </MenuItem>
+                                                            <Separator />
+                                                            <MenuItem Header="Duplicate Frame"
+                                                                      Command="{Binding PlacementTarget.Tag.DuplicateFrameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                      CommandParameter="{Binding}" />
+                                                            <MenuItem Header="Delete Frame"
+                                                                      Command="{Binding PlacementTarget.Tag.DeleteFrameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                                      CommandParameter="{Binding}" />
+                                                            <MenuItem Header="Clear Entire Selected Frames"
+                                                                      Command="{Binding PlacementTarget.Tag.ClearFrameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                                        </ContextMenu>
+                                                    </Border.ContextMenu>
+                                                    <Grid Margin="3">
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="16" />
+                                                            <RowDefinition Height="*" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+
+                                                        <!-- Header: Frame Badge & Playhead -->
+                                                        <DockPanel Grid.Row="0"
+                                                                   LastChildFill="False">
+                                                            <Border DockPanel.Dock="Left"
+                                                                    CornerRadius="3"
+                                                                    Padding="3,0"
+                                                                    VerticalAlignment="Center">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background"
+                                                                                Value="Transparent" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsActive}"
+                                                                                         Value="True">
+                                                                                <Setter Property="Background"
+                                                                                        Value="{DynamicResource Brush.Accent.Base}" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <TextBlock Text="{Binding Name}"
+                                                                           FontSize="9"
+                                                                           FontWeight="SemiBold"
+                                                                           TextTrimming="CharacterEllipsis"
+                                                                           MaxWidth="48"
+                                                                           ToolTip="{Binding Name}">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Foreground"
+                                                                                    Value="{DynamicResource Brush.Text.Muted}" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding IsActive}"
+                                                                                             Value="True">
+                                                                                    <Setter Property="Foreground"
+                                                                                            Value="{DynamicResource Brush.Text.OnAccent}" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+                                                            </Border>
+
+                                                            <!-- Playhead Indicator Icon -->
+                                                            <TextBlock DockPanel.Dock="Right"
+                                                                       Text="▶"
+                                                                       FontSize="8"
+                                                                       Foreground="{DynamicResource Brush.Accent.Base}"
+                                                                       VerticalAlignment="Center"
+                                                                       Margin="0,0,1,0"
+                                                                       ToolTip="Currently Playing">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Visibility"
+                                                                                Value="Collapsed" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsPlayingBack}"
+                                                                                         Value="True">
+                                                                                <Setter Property="Visibility"
+                                                                                        Value="Visible" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                        </DockPanel>
+
+                                                        <!-- Viewport: Frame Thumbnail -->
+                                                        <Border Grid.Row="1"
+                                                                CornerRadius="3"
+                                                                ClipToBounds="True"
+                                                                Background="{DynamicResource Brush.Surface.Panel}"
+                                                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                                                BorderThickness="1"
+                                                                Margin="0,2,0,2">
+                                                            <Grid>
+                                                                <!-- Empty frame indicator -->
+                                                                <TextBlock Text="&#xE8B9;"
+                                                                           FontFamily="Segoe MDL2 Assets"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource Brush.Text.Muted}"
+                                                                           Opacity="0.3"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"
+                                                                           ToolTip="Empty frame">
+                                                                    <TextBlock.Style>
+                                                                        <Style TargetType="TextBlock">
+                                                                            <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                            <Style.Triggers>
+                                                                                <DataTrigger Binding="{Binding HasContent}"
+                                                                                             Value="False">
+                                                                                    <Setter Property="Visibility"
+                                                                                            Value="Visible" />
+                                                                                </DataTrigger>
+                                                                            </Style.Triggers>
+                                                                        </Style>
+                                                                    </TextBlock.Style>
+                                                                </TextBlock>
+
+                                                                <!-- Image preview -->
+                                                                <Image Source="{Binding Thumbnail}"
+                                                                       Stretch="Uniform"
+                                                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                                                       Margin="2" />
+                                                            </Grid>
+                                                        </Border>
+
+                                                        <!-- Footer: Delay Multiplier Pill -->
+                                                        <Border Grid.Row="2"
+                                                                HorizontalAlignment="Center"
+                                                                CornerRadius="3"
+                                                                Padding="3,0"
+                                                                Background="{DynamicResource Brush.Surface.Elevated}"
+                                                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                                                BorderThickness="1"
+                                                                ToolTip="{Binding DelayMultiplier, StringFormat='Delay: {0}x duration'}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Visibility"
+                                                                            Value="Visible" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding DelayMultiplier}"
+                                                                                     Value="1">
+                                                                            <Setter Property="Visibility"
+                                                                                    Value="Collapsed" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        VerticalAlignment="Center">
+                                                                <TextBlock Text="⏱ "
+                                                                           FontSize="7"
+                                                                           VerticalAlignment="Center"
+                                                                           Foreground="{DynamicResource Brush.Accent.Base}" />
+                                                                <TextBlock Text="{Binding DelayMultiplier, StringFormat='{}{0}x'}"
+                                                                           FontSize="8"
+                                                                           FontWeight="SemiBold"
+                                                                           Foreground="{DynamicResource Brush.Text.Primary}"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Background"
+                                                        Value="Transparent" />
+                                                <Setter Property="BorderBrush"
+                                                        Value="Transparent" />
+                                                <Setter Property="BorderThickness"
+                                                        Value="0" />
+                                                <Setter Property="Padding"
+                                                        Value="0" />
+                                                <Setter Property="IsSelected"
+                                                        Value="{Binding IsSelected, Mode=TwoWay}" />
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <ContentPresenter />
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                    </ListBox>
+
+                                    <!-- Inline Add Frame Ghost Card Button -->
+                                    <Button Command="{Binding AddFrameCommand}"
+                                            ToolTip="Add New Frame"
+                                            Width="70"
+                                            Height="80"
+                                            Margin="2,2,4,2"
+                                            Cursor="Hand"
+                                            VerticalAlignment="Center">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="CardBorder"
+                                                        CornerRadius="6"
+                                                        BorderThickness="1.5"
+                                                        BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                                        Background="Transparent">
+                                                    <StackPanel VerticalAlignment="Center"
+                                                                HorizontalAlignment="Center">
+                                                        <TextBlock x:Name="AddIcon"
+                                                                   Text="&#xE710;"
+                                                                   FontFamily="Segoe MDL2 Assets"
+                                                                   FontSize="14"
+                                                                   HorizontalAlignment="Center"
+                                                                   Foreground="{DynamicResource Brush.Text.Muted}" />
+                                                        <TextBlock x:Name="AddText"
+                                                                   Text="Add Frame"
+                                                                   FontSize="9.5"
+                                                                   FontWeight="Medium"
+                                                                   Margin="0,3,0,0"
+                                                                   HorizontalAlignment="Center"
+                                                                   Foreground="{DynamicResource Brush.Text.Muted}" />
+                                                    </StackPanel>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver"
+                                                             Value="True">
+                                                        <Setter TargetName="CardBorder"
+                                                                Property="BorderBrush"
+                                                                Value="{DynamicResource Brush.Accent.Base}" />
+                                                        <Setter TargetName="CardBorder"
+                                                                Property="Background"
+                                                                Value="{DynamicResource Brush.Surface.Hover}" />
+                                                        <Setter TargetName="AddIcon"
+                                                                Property="Foreground"
+                                                                Value="{DynamicResource Brush.Accent.Base}" />
+                                                        <Setter TargetName="AddText"
+                                                                Property="Foreground"
+                                                                Value="{DynamicResource Brush.Text.Primary}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsPressed"
+                                                             Value="True">
+                                                        <Setter TargetName="CardBorder"
+                                                                Property="Background"
+                                                                Value="{DynamicResource Brush.Surface.Active}" />
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled"
+                                                             Value="False">
+                                                        <Setter TargetName="CardBorder"
+                                                                Property="Opacity"
+                                                                Value="0.4" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
+                        <Border x:Name="FrameInsertionGuide"
+                                Width="3"
+                                Margin="0,8"
+                                CornerRadius="1"
+                                Opacity="0.92"
+                                Background="{DynamicResource Brush.Accent.Base}"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Stretch"
+                                Visibility="Collapsed"
+                                IsHitTestVisible="False"
+                                Panel.ZIndex="1" />
+                    </Grid>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

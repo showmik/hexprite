@@ -1,0 +1,176 @@
+<UserControl x:Class="Hexprite.Views.ToolSidebarPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="100">
+    <Border Background="{DynamicResource Brush.Surface.ToolSidebar}"
+            Padding="4,4"
+            CornerRadius="8"
+            VerticalAlignment="Top">
+        <Border.Effect>
+            <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                              BlurRadius="10"
+                              Opacity="0.15"
+                              Direction="270"
+                              ShadowDepth="3" />
+        </Border.Effect>
+        <StackPanel Orientation="Vertical"
+                    HorizontalAlignment="Center">
+            <RadioButton x:Name="RbPencil"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         IsChecked="True"
+                         Tag="Pencil"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Pencil (B)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Pencil}" />
+            </RadioButton>
+            <RadioButton x:Name="RbEraser"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Eraser"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Eraser (E)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Eraser}" />
+            </RadioButton>
+            <RadioButton x:Name="RbDither"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Dither"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Dither (D)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Dither}" />
+            </RadioButton>
+            <RadioButton x:Name="RbGradient"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Gradient"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Gradient (G)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Gradient}" />
+            </RadioButton>
+            <RadioButton x:Name="RbLine"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Line"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Line (L)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Line}" />
+            </RadioButton>
+            <RadioButton x:Name="RbRectangle"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Rectangle"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Rectangle (R)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Rectangle}" />
+            </RadioButton>
+            <RadioButton x:Name="RbEllipse"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Ellipse"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Ellipse (C)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Ellipse}" />
+            </RadioButton>
+            <RadioButton x:Name="RbFilledRectangle"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="FilledRectangle"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Filled Rectangle (Shift+R)">
+                <Path Style="{StaticResource FilledToolIconStyle}" Data="{StaticResource Icon.FilledRectangle}" />
+            </RadioButton>
+            <RadioButton x:Name="RbFilledEllipse"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="FilledEllipse"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Filled Ellipse (Shift+C)">
+                <Path Style="{StaticResource FilledToolIconStyle}" Data="{StaticResource Icon.FilledEllipse}" />
+            </RadioButton>
+            <RadioButton x:Name="RbFill"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Fill"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Fill (F)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Fill}" />
+            </RadioButton>
+            <RadioButton x:Name="RbText"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Text"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Text (T)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Text}" />
+            </RadioButton>
+            <RadioButton x:Name="RbMove"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Move"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Move (V)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Move}" />
+            </RadioButton>
+
+            <!-- Separator between draw and select tools -->
+            <Rectangle Height="1"
+                       Style="{StaticResource SeparatorRectangleStyle}"
+                       Margin="4,8" />
+
+            <RadioButton x:Name="RbMarquee"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Marquee"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Marquee Select (M)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Marquee}" />
+            </RadioButton>
+            <RadioButton x:Name="RbEllipticalMarquee"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="EllipticalMarquee"
+                         Checked="Tool_Checked"
+                         Margin="0,0,0,2"
+                         ToolTip="Elliptical Marquee Select (Shift+M)">
+                <Path Style="{StaticResource StrokedToolIconStyle}"
+                      Data="{StaticResource Icon.EllipticalMarquee}"
+                      StrokeThickness="1.5"
+                      StrokeDashArray="2,2"
+                      Fill="Transparent" />
+            </RadioButton>
+            <RadioButton x:Name="RbLasso"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="Lasso"
+                         Checked="Tool_Checked"
+                         ToolTip="Lasso Select (Q)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.Lasso}" />
+            </RadioButton>
+            <RadioButton x:Name="RbMagicWand"
+                         Style="{StaticResource VerticalToolButtonStyle}"
+                         GroupName="Tools"
+                         Tag="MagicWand"
+                         Checked="Tool_Checked"
+                         ToolTip="Magic Wand (W)">
+                <Path Style="{StaticResource StrokedToolIconStyle}" Data="{StaticResource Icon.MagicWand}" />
+            </RadioButton>
+        </StackPanel>
+    </Border>
+</UserControl>

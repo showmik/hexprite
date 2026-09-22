@@ -1,0 +1,499 @@
+<UserControl x:Class="Hexprite.Views.LayersPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:converters="clr-namespace:Hexprite.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="450"
+             d:DesignWidth="360">
+    <UserControl.Resources>
+        <converters:BooleanNegationConverter x:Key="BooleanNegationConverter" />
+        <converters:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
+        <converters:OpacityModeToPercentageConverter x:Key="OpacityModeToPercentageConverter" />
+    </UserControl.Resources>
+    <Border Background="Transparent"
+            Padding="8,4,8,8">
+        <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                BorderBrush="{DynamicResource Brush.Border.Base}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="8,6,8,6">
+            <Border.Effect>
+                <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                                  Opacity="0.15"
+                                  BlurRadius="10"
+                                  ShadowDepth="2"
+                                  Direction="270" />
+            </Border.Effect>
+            <DockPanel LastChildFill="True">
+                <DockPanel DockPanel.Dock="Top"
+                           Margin="4,2,0,8">
+                    <StackPanel DockPanel.Dock="Right"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Margin="8,0,0,0"
+                                ToolTip="Focus Mode: Dim inactive layers">
+                        <TextBlock Text="FOCUS"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,4,0"
+                                   FontSize="10"
+                                   FontWeight="SemiBold">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsFocusModeEnabled}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <ToggleButton IsChecked="{Binding IsFocusModeEnabled}"
+                                      AutomationProperties.Name="Toggle focus mode"
+                                      VerticalAlignment="Center"
+                                      Style="{StaticResource FocusToggleButtonStyle}" />
+                    </StackPanel>
+                    
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="🥞" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="LAYERS"
+                                   Style="{StaticResource HeaderStyle}"
+                                   Margin="0"
+                                   VerticalAlignment="Center" />
+                    </StackPanel>
+                </DockPanel>
+
+                <!-- Layer Settings Dropdowns -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,12" IsEnabled="{Binding HasSelectedLayer}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <ComboBox Grid.Column="0" 
+                              Style="{StaticResource ModernComboBoxStyle}"
+                              ItemsSource="{Binding LayerBlendModes}"
+                              SelectedItem="{Binding ActiveLayerBlendMode}"
+                              ToolTip="Blend Mode"
+                              Padding="6,4">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" FontSize="11" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <ComboBox Grid.Column="2" 
+                              Style="{StaticResource ModernComboBoxStyle}"
+                              ItemsSource="{Binding LayerOpacityModes}"
+                              SelectedItem="{Binding ActiveLayerOpacityMode}"
+                              ToolTip="Opacity (Dither)"
+                              Padding="6,4">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource OpacityModeToPercentageConverter}}" FontSize="11" />
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                </Grid>
+
+
+                <StackPanel DockPanel.Dock="Bottom"
+                            Orientation="Vertical"
+                            Margin="0,12,0,0">
+
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Grouped Add/Delete -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding AddLayerCommand}"
+                                        ToolTip="Add layer (Ctrl+Shift+N)"
+                                        AutomationProperties.Name="Add layer"
+                                        Style="{StaticResource CompactIconButtonStyle}"
+                                        Margin="0,0,2,0">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M24 10.5H13.5V0H10.5V10.5H0V13.5H10.5V24H13.5V13.5H24V10.5Z" />
+                                </Button>
+                                <Button Command="{Binding DeleteLayerCommand}"
+                                        ToolTip="Delete layer (Ctrl+Shift+Delete)"
+                                        AutomationProperties.Name="Delete layer"
+                                        IsEnabled="{Binding IsAllLayersSelected, Converter={StaticResource BooleanNegationConverter}}"
+                                        Style="{StaticResource CompactIconButtonStyle}">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M23.0001 3H18.0001V2.5C18.0001 1.83696 17.7367 1.20107 17.2678 0.732233C16.799 0.263392 16.1631 0 15.5001 0L8.50008 0C7.83704 0 7.20115 0.263392 6.73231 0.732233C6.26347 1.20107 6.00008 1.83696 6.00008 2.5V3H1.00008V6H3.00008V21C3.00008 21.7956 3.31615 22.5587 3.87876 23.1213C4.44137 23.6839 5.20443 24 6.00008 24H18.0001C18.7957 24 19.5588 23.6839 20.1214 23.1213C20.684 22.5587 21.0001 21.7956 21.0001 21V6H23.0001V3ZM18.0001 21H6.00008V6H18.0001V21Z M10.9999 9H7.99991V18H10.9999V9Z M16.0001 9H13.0001V18H16.0001V9Z" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Grouped Duplicate/Merge -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="8,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding DuplicateLayerCommand}"
+                                        ToolTip="Duplicate layer (Ctrl+J)"
+                                        AutomationProperties.Name="Duplicate layer"
+                                        Style="{StaticResource CompactIconButtonStyle}"
+                                        Margin="0,0,2,0">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M4 6H2V20C2 21.1 2.9 22 4 22H18V20H4V6ZM20 2H8C6.9 2 6 2.9 6 4V16C6 17.1 6.9 18 8 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H8V4H20V16ZM13 14H15V11H18V9H15V6H13V9H10V11H13V14Z" />
+                                </Button>
+                                <Button Command="{Binding MergeLayerCommand}"
+                                        ToolTip="Merge layers (Ctrl+E)"
+                                        AutomationProperties.Name="Merge layers"
+                                        Style="{StaticResource CompactIconButtonStyle}">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M15 19V17H8.41L20 5.41L18.59 4L7 15.59V9H5V19H15Z" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Grouped Reorder -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                BorderThickness="1"
+                                CornerRadius="6"
+                                Padding="4,2"
+                                Margin="8,0,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding MoveLayerUpCommand}"
+                                        ToolTip="Move layer up"
+                                        AutomationProperties.Name="Move layer up"
+                                        Style="{StaticResource CompactIconButtonStyle}"
+                                        Margin="0,0,2,0">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M4 12L5.41 13.41L11 7.83V20H13V7.83L18.58 13.42L20 12L12 4L4 12Z" />
+                                </Button>
+                                <Button Command="{Binding MoveLayerDownCommand}"
+                                        ToolTip="Move layer down"
+                                        AutomationProperties.Name="Move layer down"
+                                        Style="{StaticResource CompactIconButtonStyle}">
+                                    <Path Style="{StaticResource CompactStrokedToolIconStyle}"
+                                          Data="M20 12L18.59 10.59L13 16.17V4H11V16.17L5.42 10.58L4 12L12 20L20 12Z" />
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <Grid x:Name="LayerListClipHost"
+                      ClipToBounds="True">
+                    <ListBox x:Name="LayerList"
+                             ItemsSource="{Binding Layers}"
+                             SelectedIndex="{Binding SelectedLayerIndex, Mode=TwoWay}"
+                             SelectionMode="Single"
+                             Background="{DynamicResource Brush.Surface.Panel}"
+                             BorderBrush="{DynamicResource Brush.Border.Base}"
+                             BorderThickness="1"
+                             AllowDrop="True"
+                             PreviewMouseMove="LayerList_PreviewMouseMove_ArmDrag"
+                             PreviewMouseLeftButtonUp="LayerList_PreviewMouseLeftButtonUp_ArmDrag"
+                             PreviewDragOver="LayerList_PreviewDragOver"
+                             DragLeave="LayerList_DragLeave"
+                             PreviewKeyDown="LayerList_PreviewKeyDown"
+                             Drop="LayerList_Drop"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Vertical" />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource LayerListItemStyle}">
+                            <!-- Explicitly disable any inherited hover effects -->
+                            <Setter Property="OverridesDefaultStyle" Value="True" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="4,2,4,2"
+                                  Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                  MouseEnter="LayerItem_MouseEnter"
+                                  MouseLeave="LayerItem_MouseLeave"
+                                  PreviewMouseLeftButtonDown="LayerItem_PreviewMouseLeftButtonDown"
+                                  PreviewMouseRightButtonDown="LayerItem_PreviewMouseRightButtonDown">
+                                <Grid.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Rename Layer (F2)" Click="LayerContextMenuRename_Click" />
+                                        <MenuItem Header="Duplicate Layer (Ctrl+J)" Command="{Binding PlacementTarget.Tag.DuplicateLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="New Layer from Selection (Ctrl+Shift+J)" Command="{Binding PlacementTarget.Tag.NewLayerFromSelectionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="Merge Layers (Ctrl+E)" Command="{Binding PlacementTarget.Tag.MergeLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <MenuItem Header="Delete Layer (Ctrl+Shift+Delete)" Command="{Binding PlacementTarget.Tag.DeleteLayerCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        <Separator />
+                                        <MenuItem Header="Global Layer (Use current frame across all frames)" IsCheckable="True" IsChecked="{Binding IsGlobal, Mode=OneWay}" Click="LayerGlobal_Click" />
+                                        <MenuItem Header="Exclude from Export (Reference/Draft)" IsCheckable="True" IsChecked="{Binding ExcludeFromExport, Mode=OneWay}" Click="LayerExclude_Click" />
+                                        <MenuItem Header="Preserve Overflow (Keep off-canvas pixels)" IsCheckable="True" IsChecked="{Binding PreserveOverflow, Mode=OneWay}" Click="LayerOverflow_Click" />
+                                        <Separator />
+                                        <MenuItem Header="Blend Mode">
+                                            <MenuItem Header="Normal" IsCheckable="True" IsChecked="{Binding BlendMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Normal}" Tag="Normal" Click="LayerBlendMode_Click" />
+                                            <MenuItem Header="XOR" IsCheckable="True" IsChecked="{Binding BlendMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Xor}" Tag="Xor" Click="LayerBlendMode_Click" />
+                                            <MenuItem Header="Mask (AND)" IsCheckable="True" IsChecked="{Binding BlendMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Mask}" Tag="Mask" Click="LayerBlendMode_Click" />
+                                            <MenuItem Header="Subtract" IsCheckable="True" IsChecked="{Binding BlendMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Subtract}" Tag="Subtract" Click="LayerBlendMode_Click" />
+                                        </MenuItem>
+                                        <MenuItem Header="Opacity (Dither)">
+                                            <MenuItem Header="Solid (100%)" IsCheckable="True" IsChecked="{Binding OpacityMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Solid}" Tag="Solid" Click="LayerOpacityMode_Click" />
+                                            <MenuItem Header="Dense (75%)" IsCheckable="True" IsChecked="{Binding OpacityMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Dense}" Tag="Dense" Click="LayerOpacityMode_Click" />
+                                            <MenuItem Header="Checkerboard (50%)" IsCheckable="True" IsChecked="{Binding OpacityMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Checkerboard}" Tag="Checkerboard" Click="LayerOpacityMode_Click" />
+                                            <MenuItem Header="Sparse (25%)" IsCheckable="True" IsChecked="{Binding OpacityMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Sparse}" Tag="Sparse" Click="LayerOpacityMode_Click" />
+                                        </MenuItem>
+                                    </ContextMenu>
+                                </Grid.ContextMenu>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0"
+                                        Margin="0,0,4,0"
+                                        Padding="2,4,4,4"
+                                        Background="Transparent"
+                                        Cursor="SizeAll"
+                                        ToolTip="Drag to reorder layers"
+                                        PreviewMouseLeftButtonDown="LayerGrip_PreviewMouseLeftButtonDown">
+                                    <TextBlock Text="≡"
+                                               VerticalAlignment="Center"
+                                               Foreground="{DynamicResource Brush.Text.Muted}" />
+                                </Border>
+                                <ToggleButton Grid.Column="1"
+                                              Margin="0,0,8,0"
+                                              Style="{StaticResource LayerToggleIconButtonStyle}"
+                                              IsChecked="{Binding IsVisible, Mode=OneWay}"
+                                              Click="LayerVisible_Click"
+                                              AutomationProperties.Name="Layer visibility">
+                                    <ToggleButton.ToolTip>
+                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text"
+                                                                Value="Show layer" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsVisible}"
+                                                                         Value="True">
+                                                                <Setter Property="Text"
+                                                                        Value="Hide layer" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </ToolTip>
+                                    </ToggleButton.ToolTip>
+                                    <Grid Width="14" Height="14">
+                                            <Path Width="14"
+                                                  Height="14"
+                                                  Data="M11.8456 11.3101C10.5139 11.3101 9.43457 12.3891 9.43457 13.7221C9.43457 15.0538 10.5138 16.1331 11.8456 16.1331C13.1777 16.1331 14.2576 15.0535 14.2576 13.7221C14.2576 12.3894 13.1775 11.3101 11.8456 11.3101ZM7.93457 13.7221C7.93457 11.561 9.6852 9.81006 11.8456 9.81006C14.0056 9.81006 15.7576 11.5607 15.7576 13.7221C15.7576 15.8826 14.0055 17.6331 11.8456 17.6331C9.68536 17.6331 7.93457 15.8823 7.93457 13.7221Z M1.91923 13.3995C3.97425 9.07345 7.68571 6.36843 11.8447 6.3667C11.846 6.3667 11.8473 6.3667 11.8487 6.3667V7.8667C11.848 7.8667 11.8473 7.8667 11.8467 7.8667C11.846 7.8667 11.8453 7.8667 11.8447 7.8667M11.8467 7.8667C15.3013 7.86757 18.5533 10.1151 20.4192 14.0431L20.741 14.7205L22.0959 14.0769L21.7741 13.3995C19.7191 9.07345 16.0077 6.36843 11.8487 6.3667M11.8467 7.8667C8.39202 7.86757 5.14009 10.1151 3.27413 14.0431L2.95231 14.7205L1.59742 14.0769L1.91923 13.3995">
+                                            <Path.Style>
+                                                <Style TargetType="Path" BasedOn="{StaticResource CompactStrokedToolIconStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Setter Property="Fill" Value="{DynamicResource Brush.Text.Primary}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                            <Path Width="14"
+                                                  Height="14"
+                                                  Data="M2.07255 7.72859C4.12758 12.0546 7.83903 14.7596 11.998 14.7614C11.9993 14.7614 12.0007 14.7614 12.002 14.7614V13.2614C12.0013 13.2614 12.0007 13.2614 12 13.2614C11.9993 13.2614 11.9987 13.2614 11.998 13.2614M12 13.2614C15.4547 13.2605 18.7066 11.013 20.5726 7.08496L20.8944 6.40752L22.2493 7.05114L21.9275 7.72859C19.8724 12.0546 16.161 14.7596 12.002 14.7614M12 13.2614C8.54534 13.2605 5.29341 11.013 3.42745 7.08496L3.10564 6.40752L1.75074 7.05114L2.07255 7.72859 M18.5897 10.2148L21.7615 13.3866L20.7008 14.4473L17.5291 11.2755L18.5897 10.2148Z M5.33124 10.2148L2.15947 13.3866L3.22013 14.4473L6.3919 11.2755L5.33124 10.2148Z M14.8435 12.754L16.1061 17.1041L14.6656 17.5222L13.4029 13.1722L14.8435 12.754Z M9.07668 12.7543L7.81404 17.1044L9.25459 17.5225L10.5172 13.1724L9.07668 12.7543Z">
+                                            <Path.Style>
+                                                <Style TargetType="Path" BasedOn="{StaticResource CompactStrokedToolIconStyle}">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Setter Property="Fill" Value="{DynamicResource Brush.Text.Muted}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                    </Grid>
+                                </ToggleButton>
+                                <Grid Grid.Column="2"
+                                      Margin="0,0,8,0"
+                                      Background="Transparent"
+                                      PreviewMouseDown="LayerDisplayName_PreviewMouseDown"
+                                      ToolTip="Double-click to rename">
+                                    <TextBlock Text="{Binding Name}"
+                                               Padding="8,2,8,2"
+                                               VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Muted}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsVisible}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource Brush.Text.Primary}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBox Text="{Binding Name}"
+                                             Height="20"
+                                             VerticalAlignment="Center"
+                                             KeyDown="LayerName_KeyDown"
+                                             LostFocus="LayerName_LostFocus"
+                                             IsVisibleChanged="LayerName_TextBox_IsVisibleChanged">
+                                        <TextBox.Style>
+                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBoxStyle}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsRenaming}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBox.Style>
+                                    </TextBox>
+                                    <TextBlock Text="◎"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,4,0"
+                                               Foreground="{DynamicResource Brush.Accent.Base}"
+                                               ToolTip="Global layer — shared across all animation frames">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsGlobal}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                                <Border Grid.Column="3"
+                                        Margin="0,0,4,0"
+                                        Background="Transparent"
+                                        ToolTip="Layer preserves overflow (keeps off-canvas pixels)">
+                                    <Path Width="14" Height="14"
+                                          Stretch="Uniform"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Fill="{DynamicResource Brush.Text.Muted}"
+                                          Data="m19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25zm0 6l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25zm-7.5-5.5L9 4L6.5 9.5L1 12l5.5 2.5L9 20l2.5-5.5L17 12zm-1.51 3.49L9 15.17l-.99-2.18L5.83 12l2.18-.99L9 8.83l.99 2.18l2.18.99z">
+                                        <Path.Style>
+                                            <Style TargetType="Path">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding PreserveOverflow}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Path.Style>
+                                    </Path>
+                                </Border>
+                                <Border Grid.Column="4"
+                                        Margin="0,0,8,0"
+                                        Width="8"
+                                        Background="Transparent"
+                                        ToolTip="Layer has content">
+                                    <Ellipse Width="5" Height="5"
+                                             Fill="{DynamicResource Brush.Text.Primary}"
+                                             HorizontalAlignment="Center"
+                                             VerticalAlignment="Center">
+                                        <Ellipse.Style>
+                                            <Style TargetType="Ellipse">
+                                                <Setter Property="Visibility" Value="Hidden"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding HasContent}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                </Border>
+                                <ToggleButton Grid.Column="5"
+                                              Margin="0,0,2,0"
+                                              Style="{StaticResource LayerToggleIconButtonStyle}"
+                                              IsChecked="{Binding IsLocked, Mode=OneWay}"
+                                              Click="LayerLocked_Click"
+                                              AutomationProperties.Name="Layer lock">
+                                    <ToggleButton.ToolTip>
+                                        <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                            <TextBlock>
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text"
+                                                                Value="Lock layer" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsLocked}"
+                                                                         Value="True">
+                                                                <Setter Property="Text"
+                                                                        Value="Unlock layer" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </ToolTip>
+                                    </ToggleButton.ToolTip>
+                                    <Grid Width="14" Height="14">
+                                            <Path Width="14"
+                                                  Height="14"
+                                                  Data="M15.8099 9.00251H8.18989V7.40951C8.19389 6.39551 8.59289 5.44251 9.31489 4.72751C10.0329 4.01651 10.9819 3.62551 11.9939 3.62551H12.0099C14.1059 3.62551 15.8099 5.33051 15.8099 7.42651V9.00251ZM11.1099 17.2995H12.6099V13.5785H11.1099V17.2995ZM17.3099 9.00251V7.42651C17.3099 4.50351 14.9319 2.12551 12.0129 2.12551C10.6099 2.09651 9.26489 2.66551 8.25989 3.66151C7.25289 4.65851 6.69589 5.98751 6.68989 7.42651V9.00251H3.88989V21.8755H20.1099V9.00251H17.3099Z">
+                                            <Path.Style>
+                                                <Style TargetType="Path" BasedOn="{StaticResource CompactStrokedToolIconStyle}">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Setter Property="Fill" Value="{DynamicResource Brush.Text.Primary}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                            <Path Width="14"
+                                                  Height="14"
+                                                  Data="M6.75831 7.14007C6.77112 4.21248 9.15341 1.85043 12.0799 1.86235C13.6039 1.86281 14.9786 2.50764 15.9444 3.53685L16.4576 4.08376L15.3638 5.11018L14.8506 4.56326C14.156 3.82312 13.1714 3.36235 12.0783 3.36235H12.075C9.97682 3.35317 8.26833 5.04593 8.2583 7.14507V9.84474H6.7583L6.75831 7.14007Z M12.6812 13.3149V17.0359H11.1812V13.3149H12.6812Z M3.70557 21.8623L3.70557 8.48877L20.4306 8.48877L20.4306 21.8623L3.70557 21.8623ZM5.20557 20.3623L18.9306 20.3623L18.9306 9.98877L5.20557 9.98877L5.20557 20.3623Z">
+                                            <Path.Style>
+                                                <Style TargetType="Path" BasedOn="{StaticResource CompactStrokedToolIconStyle}">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                    </Grid>
+                                </ToggleButton>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                    </ListBox>
+                    <Border x:Name="LayerInsertionGuide"
+                            Height="3"
+                            Margin="8,0"
+                            CornerRadius="1"
+                            Opacity="0.92"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Stretch"
+                            Visibility="Collapsed"
+                            IsHitTestVisible="False"
+                            Panel.ZIndex="1" />
+                </Grid>
+            </DockPanel>
+        </Border>
+    </Border>
+</UserControl>

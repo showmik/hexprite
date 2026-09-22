@@ -1,0 +1,1230 @@
+<UserControl x:Class="Hexprite.Views.SidebarPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:core="clr-namespace:Hexprite.Core"
+             xmlns:rendering="clr-namespace:Hexprite.Rendering"
+             xmlns:services="clr-namespace:Hexprite.Services"
+             mc:Ignorable="d"
+             d:DesignHeight="800" d:DesignWidth="320">
+
+    <Border Background="Transparent"
+            BorderThickness="0"
+            CornerRadius="8"
+            Padding="2,4,0,8">
+        <DockPanel LastChildFill="True">
+
+            <ScrollViewer x:Name="MainScroll"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled"
+                          CanContentScroll="False"
+                          Style="{StaticResource {x:Type ScrollViewer}}">
+                <StackPanel>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     OLED PREVIEW (collapsible, dynamic size)
+                     ═══════════════════════════════════════════════════════ -->
+                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                        CornerRadius="8"
+                        BorderBrush="{DynamicResource Brush.Border.Base}"
+                        BorderThickness="1"
+                        Margin="0,0,0,8"
+                        Padding="8">
+                <StackPanel>
+                    <Expander Style="{StaticResource ModernExpanderStyle}"
+                              IsExpanded="{Binding IsDisplayPreviewExpanded, Mode=TwoWay}">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                <TextBlock Text="📺" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="DISPLAY PREVIEW" Style="{StaticResource HeaderStyle}" Margin="0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Margin="0,12,0,0">
+
+                            <!-- Display options -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    CornerRadius="6"
+                                    Padding="8"
+                                    Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <ComboBox Grid.Row="0" Grid.Column="0"
+                                              Height="24"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              SelectedIndex="{Binding PreviewDisplayTypeIndex}">
+                                        <ComboBoxItem Content="Generic (White)"/>
+                                        <ComboBoxItem Content="SSD1306 (Blue)"/>
+                                        <ComboBoxItem Content="SSD1306 (Green)"/>
+                                        <ComboBoxItem Content="e-Paper"/>
+                                        <ComboBoxItem Content="Flipper Zero"/>
+                                    </ComboBox>
+
+                                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Center">
+                                        <Button Content="−" Width="24" Height="24" Padding="0" Style="{StaticResource ModernButtonStyle}" Command="{Binding DecreasePreviewScaleCommand}" IsEnabled="{Binding CanDecreasePreviewScale}"/>
+                                        <TextBlock Text="{Binding PreviewScale}" VerticalAlignment="Center" Width="26" TextAlignment="Center" Foreground="{DynamicResource Brush.Text.Primary}" FontWeight="Medium" FontSize="11" />
+                                        <Button Content="+" Width="24" Height="24" Padding="0" Style="{StaticResource ModernButtonStyle}" Command="{Binding IncreasePreviewScaleCommand}" IsEnabled="{Binding CanIncreasePreviewScale}"/>
+                                    </StackPanel>
+
+                                    <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                            Content="🔍 Simulate"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Height="24" Padding="8,0" Margin="0,8,0,0"
+                                            HorizontalAlignment="Left"
+                                            Click="OpenDisplaySimulation_Click"
+                                            ToolTip="Open display simulation preview in a separate window"/>
+                                </Grid>
+                            </Border>
+
+
+
+                            <!-- Dynamic canvas preview -->
+                            <Grid MinHeight="140">
+                                <Border HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        CornerRadius="{Binding PreviewFrameOuterCornerRadius}"
+                                        Padding="{Binding PreviewFrameOuterPadding}"
+                                        Background="{DynamicResource Brush.DisplayPreview.FrameOuterBg}"
+                                        BorderBrush="{DynamicResource Brush.DisplayPreview.FrameOuterBorder}"
+                                        BorderThickness="1">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                                                          Opacity="{DynamicResource DisplayPreview.FrameShadowOpacity}"
+                                                          BlurRadius="{DynamicResource DisplayPreview.FrameShadowBlur}"
+                                                          ShadowDepth="{DynamicResource DisplayPreview.FrameShadowDepth}"
+                                                          Direction="270"/>
+                                    </Border.Effect>
+
+                                    <!-- Inner bezel/frame -->
+                                    <Border CornerRadius="{Binding PreviewFrameInnerCornerRadius}"
+                                            Padding="{Binding PreviewFrameInnerPadding}"
+                                            Background="{DynamicResource Brush.DisplayPreview.FrameInnerBg}"
+                                            BorderBrush="{DynamicResource Brush.DisplayPreview.FrameInnerBorder}"
+                                            BorderThickness="{Binding PreviewFrameInnerBorderThickness}">
+                                        <Grid>
+                                            <!-- Subtle glass highlight -->
+                                            <Border CornerRadius="{Binding PreviewFrameHighlightCornerRadius}"
+                                                    BorderBrush="{DynamicResource Brush.DisplayPreview.FrameHighlight}"
+                                                    BorderThickness="0,0,0,1"
+                                                    IsHitTestVisible="False"
+                                                    VerticalAlignment="Top"
+                                                    Height="{Binding PreviewFrameHighlightHeight}"
+                                                    Margin="1,1,1,0"/>
+
+                                            <Border BorderBrush="{DynamicResource Brush.Surface.Base}"
+                                                    BorderThickness="{Binding PreviewFrameScreenBorderThickness}"
+                                                    CornerRadius="{Binding PreviewFrameScreenCornerRadius}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Background"
+                                                                Value="{DynamicResource Brush.Canvas.Base}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsDisplayInverted}"
+                                                                         Value="True">
+                                                                <Setter Property="Background"
+                                                                        Value="{DynamicResource Brush.Accent.Base}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <Grid>
+                                                    <Grid.Style>
+                                                        <Style TargetType="Grid">
+                                                            <Setter Property="Background"
+                                                                    Value="{DynamicResource Brush.Preview.Base}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsDisplayInverted}"
+                                                                             Value="True">
+                                                                    <Setter Property="Background"
+                                                                            Value="{DynamicResource Brush.Preview.Drawing}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Grid.Style>
+                                                    <Image Source="{Binding DisplayPreviewBitmap}"
+                                                           Stretch="Fill"
+                                                           Width="{Binding PreviewWidth}"
+                                                           Height="{Binding PreviewHeight}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center">
+                                                        <Image.Style>
+                                                            <Style TargetType="Image">
+                                                                <Setter Property="RenderOptions.BitmapScalingMode" Value="NearestNeighbor"/>
+                                                            </Style>
+                                                        </Image.Style>
+                                                    </Image>
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+                                </Border>
+                            </Grid>
+                            <Border Background="{DynamicResource Brush.Surface.Panel}" CornerRadius="4" HorizontalAlignment="Center" Padding="8,4" Margin="0,8,0,0">
+                                <TextBlock FontSize="10"
+                                           Foreground="{DynamicResource Brush.Text.Muted}">
+                                    <Run Text="Size: " FontWeight="SemiBold"/>
+                                    <Run Text="{Binding SpriteState.Width, Mode=OneWay}"/>
+                                    <Run Text="×"/>
+                                    <Run Text="{Binding SpriteState.Height, Mode=OneWay}"/>
+                                    <Run Text=" px "/>
+                                    <Run Text="{Binding PreviewScaleText, Mode=OneWay}"/>
+                                </TextBlock>
+                            </Border>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════
+                 LINKED SOURCE
+                 ═══════════════════════════════════════════════════════ -->
+            <Border CornerRadius="8"
+                    BorderThickness="1"
+                    Margin="0,0,0,8"
+                    Padding="8">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Overlay}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource Brush.Border.Base}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsLinked}" Value="True">
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <SolidColorBrush Color="{DynamicResource Palette.Accent.Muted}" Opacity="0.5" />
+                                    </Setter.Value>
+                                </Setter>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <StackPanel>
+                    <Expander Style="{StaticResource ModernExpanderStyle}"
+                              Background="Transparent"
+                              IsExpanded="{Binding IsLinkedSourceExpanded, Mode=TwoWay}">
+                        <Expander.Header>
+                            <!-- Header -->
+                            <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                <TextBlock Text="🔗" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="LINKED SOURCE" Style="{StaticResource HeaderStyle}" Margin="0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Margin="0,12,0,0">
+                            
+                            <!-- Not Linked Content -->
+                            <StackPanel Visibility="{Binding IsNotLinked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="Canvas is not connected to an external file. Link to a source file to establish a connection."
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource Brush.Text.Muted}"
+                                           FontSize="11"
+                                           Margin="4,0,4,12"
+                                           LineHeight="16"/>
+
+                                <Button Style="{StaticResource ModernButtonStyle}"
+                                        Padding="6,8"
+                                        Command="{Binding RelinkSourceCommand}"
+                                        ToolTip="Change the linked file location">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="🔗" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" FontFamily="Segoe UI Emoji"/>
+                                        <TextBlock Text="Link File..." FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+
+                            <!-- Linked Content -->
+                            <StackPanel Visibility="{Binding IsLinked, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="Canvas is connected to an external file. Updates can be synchronized."
+                                           TextWrapping="Wrap"
+                                           Foreground="{DynamicResource Brush.Text.Muted}"
+                                           FontSize="11"
+                                           Margin="4,0,4,12"
+                                           LineHeight="16"/>
+
+                                <!-- File & Variable Details Card -->
+                                <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                        BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="8"
+                                        Margin="0,0,0,12">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="File" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" Margin="0,0,12,6" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding LinkedSourceFileName}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" FontWeight="Medium" Margin="0,0,0,6" TextTrimming="CharacterEllipsis" ToolTip="{Binding SpriteState.LinkedSourceFile}" VerticalAlignment="Center"/>
+                                        
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Var" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LinkedVariableName}" FontFamily="{DynamicResource Font.Code}" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="11" FontWeight="Medium" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Stale Canvas warning banner -->
+                                <Border Background="#20FFA500" BorderBrush="#80FFA500" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12"
+                                        Visibility="{Binding IsLinkedSourceStale, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚠" Foreground="#FFA500" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Canvas has unsaved changes" 
+                                                   Foreground="{DynamicResource Brush.Text.Primary}" 
+                                                   FontSize="11" FontWeight="Medium"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Missing file warning banner -->
+                                <Border Background="#20FF3333" BorderBrush="#80FF3333" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12"
+                                        Visibility="{Binding IsLinkedFileMissing, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="❌" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Linked file is missing or deleted" 
+                                                   Foreground="{DynamicResource Brush.Text.Primary}" 
+                                                   FontSize="11" FontWeight="Medium"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- External change warning banner -->
+                                <Border Background="#20FFA500" BorderBrush="#80FFA500" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,0,0,12"
+                                        Visibility="{Binding LinkedFileChangedExternally, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚠" Foreground="#FFA500" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Source file changed externally - Pull to sync" 
+                                                   Foreground="{DynamicResource Brush.Text.Primary}" 
+                                                   FontSize="11" FontWeight="Medium"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Actions -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Button Grid.Column="0"
+                                            Style="{StaticResource AccentButtonStyle}"
+                                            Padding="6,8"
+                                            Command="{Binding UpdateLinkedSourceCommand}"
+                                            ToolTip="Push current code to the original source file">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="⟳" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Update" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Padding="6,8"
+                                            Command="{Binding PullLinkedSourceCommand}"
+                                            ToolTip="Pull external changes from the original source file">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="⬇" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Pull" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Grid.Column="4"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Padding="6,8"
+                                            Command="{Binding RestoreLinkedSourceCommand}"
+                                            ToolTip="Revert canvas to match the original source file">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="↩" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Restore" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+
+                                <!-- Link Management Actions -->
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <Button Grid.Column="0"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Padding="6,8"
+                                            Command="{Binding RelinkSourceCommand}"
+                                            ToolTip="Change the linked file location">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="🔗" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" FontFamily="Segoe UI Emoji"/>
+                                            <TextBlock Text="Relink..." FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+
+                                    <Button Grid.Column="2"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Padding="6,8"
+                                            Command="{Binding UnlinkSourceCommand}"
+                                            ToolTip="Disconnect this canvas from the source file">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="⏏" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center" FontFamily="Segoe UI Emoji"/>
+                                            <TextBlock Text="Unlink" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Batch Operations -->
+                            <Border BorderBrush="{DynamicResource Brush.Border.Separator}" 
+                                    BorderThickness="0,1,0,0" Margin="0,12,0,0" Padding="0,12,0,0"
+                                    Visibility="{Binding DataContext.HasAnyLinkedDocuments, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel>
+                                    <TextBlock Text="BATCH OPERATIONS" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="10" FontWeight="SemiBold" Opacity="0.6" Margin="4,0,0,8"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="4"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="4"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0"
+                                                Style="{StaticResource AccentButtonStyle}"
+                                                Padding="6,8"
+                                                Command="{Binding DataContext.UpdateAllLinkedSourcesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                ToolTip="Push changes from all linked tabs back to their source files">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="⟳" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Update All" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="2"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Padding="6,8"
+                                                Command="{Binding DataContext.PullAllLinkedSourcesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                ToolTip="Pull external changes from all linked tabs">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="⬇" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Pull All" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Grid.Column="4"
+                                                Style="{StaticResource ModernButtonStyle}"
+                                                Padding="6,8"
+                                                Command="{Binding DataContext.RestoreAllLinkedSourcesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                ToolTip="Restore all linked source files to their original state">
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <TextBlock Text="↩" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Restore All" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════
+                 LIVE HARDWARE PREVIEW (Serial/USB)
+                 ═══════════════════════════════════════════════════════ -->
+            <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                    CornerRadius="8"
+                    BorderBrush="{DynamicResource Brush.Border.Base}"
+                    BorderThickness="1"
+                    Margin="0,0,0,8"
+                    Padding="8">
+            <StackPanel>
+                <Expander Style="{StaticResource ModernExpanderStyle}"
+                          IsExpanded="{Binding IsHardwarePreviewExpanded, Mode=TwoWay}">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                            <TextBlock Text="🔌" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="HARDWARE PREVIEW" Style="{StaticResource HeaderStyle}" Margin="0" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Expander.Header>
+                    <StackPanel Margin="0,12,0,4">
+                        <!-- Card 1: Connection & Link -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="10,8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <!-- Connection Action Button -->
+                                <Button Command="{Binding ToggleHardwarePreviewConnectionCommand}"
+                                        Content="{Binding HardwarePreviewConnectionButtonText}"
+                                        FontWeight="SemiBold"
+                                        FontSize="11"
+                                        Height="28"
+                                        Margin="0,0,0,6"
+                                        HorizontalAlignment="Stretch"
+                                        Style="{StaticResource ModernButtonStyle}"/>
+
+                                <!-- Status line + Auto-connect checkbox -->
+                                <DockPanel LastChildFill="True" Margin="0,0,0,8">
+                                    <CheckBox DockPanel.Dock="Right"
+                                              IsChecked="{Binding HardwarePreviewAutoConnect}"
+                                              Content="Auto-connect"
+                                              FontSize="10"
+                                              Foreground="{DynamicResource Brush.Text.Muted}"
+                                              VerticalAlignment="Center"
+                                              ToolTip="Automatically start preview streaming when your configured board is plugged in"/>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7" Fill="{Binding HardwarePreviewStatusBrush}" VerticalAlignment="Center" Margin="1,0,6,0"/>
+                                        <TextBlock Text="{Binding HardwarePreviewStatusText}" FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                </DockPanel>
+
+                                <!-- Troubleshooting Checklist Flyout -->
+                                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                                        BorderBrush="{DynamicResource Brush.Accent.Warning}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="8,6"
+                                        Margin="0,0,0,8"
+                                        Visibility="{Binding IsTroubleshootingVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <DockPanel LastChildFill="True" Margin="0,0,0,4">
+                                            <TextBlock Text="Troubleshooting Checklist" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Brush.Accent.Warning}" VerticalAlignment="Center"/>
+                                            <Button DockPanel.Dock="Right" Content="✕" Width="16" Height="16" Padding="0" FontSize="9"
+                                                    Command="{Binding ToggleTroubleshootingCommand}" Style="{StaticResource ModernButtonStyle}"
+                                                    HorizontalAlignment="Right"/>
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding TroubleshootingGuide}" FontSize="9.5" Foreground="{DynamicResource Brush.Text.Primary}" TextWrapping="Wrap" LineHeight="14"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Port Selector -->
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="38"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Port" FontSize="10.5" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding AvailablePorts}"
+                                              DisplayMemberPath="DisplayName"
+                                              SelectedValuePath="PortName"
+                                              SelectedValue="{Binding HardwarePreviewPort}"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="24"/>
+                                    <Button Grid.Column="2" Content="⟳"
+                                            Width="24" Height="24" Padding="0" Margin="4,0,0,0"
+                                            ToolTip="Refresh Ports"
+                                            Command="{Binding RefreshPortsCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Baud Rate Selector -->
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="38"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Baud" FontSize="10.5" Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                    <ComboBox Grid.Column="1" SelectedValue="{Binding HardwarePreviewBaudRate}" 
+                                              ToolTip="Baud rate must match the sketch uploaded to your board (default: 115200). Click ⚡ to auto-detect."
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="24">
+                                        <ComboBox.Items>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">9600</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">19200</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">38400</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">57600</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">115200</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">230400</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">460800</System:Int32>
+                                            <System:Int32 xmlns:System="clr-namespace:System;assembly=mscorlib">921600</System:Int32>
+                                        </ComboBox.Items>
+                                    </ComboBox>
+                                    <Button Grid.Column="2" Content="⚡"
+                                            Width="24" Height="24" Padding="0" Margin="4,0,0,0"
+                                            ToolTip="Auto-detect board baud rate by probing standard speeds"
+                                            Command="{Binding AutoDetectBaudRateCommand}"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            VerticalAlignment="Center"/>
+                                </Grid>
+
+                                <!-- Error troubleshooting trigger button (if checklist is collapsed) -->
+                                <Button Content="⚠ View Troubleshooting Checklist"
+                                        Command="{Binding ToggleTroubleshootingCommand}"
+                                        Visibility="{Binding IsHardwarePreviewError, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        FontSize="10" Padding="0,4" Margin="0,4,0,0"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: Display Mapping (Canvas -> Physical Screen) -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="10,8"
+                                Margin="0,0,0,8">
+                            <StackPanel>
+                                <TextBlock Text="DISPLAY MAPPING" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,6"/>
+
+                                <!-- Target Display Info Badge -->
+                                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                                        BorderThickness="0" CornerRadius="4" Padding="6,4" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="🖥" FontSize="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding TargetDisplayInfo}" FontSize="9.5"
+                                                   Foreground="{DynamicResource Brush.Text.Primary}" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" ToolTip="Target display controller and resolution used for canvas mapping"/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Placement & Scale -->
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="6"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="Placement" FontSize="9.5" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding AvailablePlacements}"
+                                                  SelectedValuePath="Placement"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding HardwarePreviewPlacement}"
+                                                  Style="{StaticResource ModernComboBoxStyle}"
+                                                  Height="24"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Scale" FontSize="9.5" Foreground="{DynamicResource Brush.Text.Muted}" Margin="0,0,0,3"/>
+                                        <ComboBox ItemsSource="{Binding AvailableScales}"
+                                                  SelectedValuePath="Scale"
+                                                  DisplayMemberPath="DisplayName"
+                                                  SelectedValue="{Binding HardwarePreviewScale}"
+                                                  Style="{StaticResource ModernComboBoxStyle}"
+                                                  Height="24"/>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: Device Firmware & Sketch Setup -->
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderThickness="0"
+                                CornerRadius="6"
+                                Padding="10,8"
+                                Margin="0,0,0,0">
+                            <StackPanel>
+                                <DockPanel LastChildFill="True" Margin="0,0,0,6">
+                                    <Button DockPanel.Dock="Right" Content="⚙ Configure..."
+                                            Style="{StaticResource ModernButtonStyle}" Padding="6,2" FontSize="9.5"
+                                            ToolTip="Configure microcontroller board model, display wiring, or custom pins for the sketch"
+                                            Command="{Binding ConfigureHardwarePreviewWiringCommand}"/>
+                                    <TextBlock Text="FIRMWARE &amp; SKETCH" FontSize="10" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource Brush.Text.Muted}" VerticalAlignment="Center"/>
+                                </DockPanel>
+
+                                <!-- Board & Wiring Summary Chip -->
+                                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                                        BorderThickness="0" CornerRadius="4" Padding="6,4" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="⚡" FontSize="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding HardwarePreviewWiringSummary}" FontSize="9.5"
+                                                   Foreground="{DynamicResource Brush.Text.Primary}" TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" ToolTip="Configured board wiring. Note: changes require re-flashing the sketch to your board."/>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Quick Actions Bar (Arduino, PlatformIO, Folder) -->
+                                <Grid Margin="0,0,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="4"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Button Grid.Column="0"
+                                            Padding="0,6"
+                                            FontSize="10"
+                                            HorizontalAlignment="Stretch"
+                                            ToolTip="Launch or update Arduino IDE sketch"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Command="{Binding OpenInArduinoIdeCommand}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="🚀" FontSize="10" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Arduino"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="2"
+                                            Padding="0,6"
+                                            FontSize="10"
+                                            HorizontalAlignment="Stretch"
+                                            ToolTip="Open PlatformIO project folder with preconfigured platformio.ini and config.h"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Command="{Binding OpenPlatformIOCommand}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="⚡" FontSize="10" Margin="0,0,4,0"/>
+                                            <TextBlock Text="PlatformIO"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Grid.Column="4"
+                                            Padding="0,6"
+                                            FontSize="10"
+                                            HorizontalAlignment="Stretch"
+                                            ToolTip="Open the folder containing HexpritePreview sketch files"
+                                            Style="{StaticResource ModernButtonStyle}"
+                                            Command="{Binding OpenSketchFolderCommand}">
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="📂" FontSize="10" Margin="0,0,4,0"/>
+                                            <TextBlock Text="Files"/>
+                                        </StackPanel>
+                                    </Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Expander>
+            </StackPanel>
+            </Border>
+
+            <!-- ═══════════════════════════════════════════════════════
+                 CODE GENERATION PANEL
+                 ═══════════════════════════════════════════════════════ -->
+                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                        CornerRadius="8"
+                        BorderBrush="{DynamicResource Brush.Border.Base}"
+                        BorderThickness="1"
+                        Margin="0,0,0,8"
+                        Padding="8">
+                <StackPanel>
+                    <Expander Style="{StaticResource ModernExpanderStyle}"
+                              IsExpanded="{Binding IsCodeGenerationExpanded, Mode=TwoWay}">
+                        <Expander.Header>
+                            <!-- Header -->
+                            <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                <TextBlock Text="💻" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="CODE GENERATION" Style="{StaticResource HeaderStyle}" Margin="0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Margin="0,12,0,0">
+                            
+                            <TextBlock Text="Generates C/C++ arrays, MicroPython scripts, or complete sketches from visible layers."
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.Text.Muted}"
+                                       FontSize="11"
+                                       Margin="4,0,4,12"
+                                       LineHeight="16"/>
+
+                            <!-- Settings Card -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="8"
+                                    Margin="0,0,0,8">
+                                <StackPanel>
+                                    <!-- Format selector -->
+                                    <TextBlock Text="Format"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"/>
+                                    <ComboBox x:Name="CboFormat"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="26"
+                                              Margin="0,0,0,12"
+                                              SelectedIndex="0"
+                                              SelectionChanged="CboFormat_SelectionChanged">
+                                        <ComboBoxItem Content="Adafruit GFX  (PROGMEM, MSB first)"    Tag="AdafruitGfx"/>
+                                        <ComboBoxItem Content="u8g2 drawBitmap  (U8X8_PROGMEM, MSB)"  Tag="U8g2DrawBitmap"/>
+                                        <ComboBoxItem Content="u8g2 drawXBM  (PROGMEM, LSB first)"    Tag="U8g2DrawXBM"/>
+                                        <ComboBoxItem Content="Plain C array  (no PROGMEM)"            Tag="PlainCArray"/>
+                                        <ComboBoxItem Content="MicroPython bytearray  (MONO_HLSB)"     Tag="MicroPython"/>
+                                        <ComboBoxItem Content="Raw hex  (no wrapper)"                  Tag="RawHex"/>
+                                        <ComboBoxItem Content="Raw binary  (no wrapper)"               Tag="RawBinary"/>
+                                        <ComboBoxItem Content="Indexed 2D array (1 byte/px)"           Tag="Indexed2D"/>
+                                        <ComboBoxItem Content="LiquidCrystal 1602 (createChar)"        Tag="LiquidCrystalChar"/>
+                                        <ComboBoxItem Content="Flipper Bitmap (Compressed)"            Tag="FlipperCompressedBitmap"/>
+                                        <ComboBoxItem Content="Flipper XBM (LSB first)"                Tag="FlipperXbm"/>
+                                        <ComboBoxItem Content="Flipper Icon (Asset)"                   Tag="FlipperCanvasIcon"/>
+                                    </ComboBox>
+
+                                    <!-- Compression mode -->
+                                    <TextBlock Text="Compression"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"
+                                               Visibility="{Binding IsCompressionVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <ComboBox x:Name="CboCompression"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="26"
+                                              Margin="0,0,0,12"
+                                              SelectedIndex="0"
+                                              SelectionChanged="CboCompression_SelectionChanged"
+                                              Visibility="{Binding IsCompressionVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <ComboBoxItem Content="None  (raw bytes)"                  Tag="None"/>
+                                        <ComboBoxItem Content="RLE  (~120B decoder, good ratio)"   Tag="Rle"/>
+                                        <ComboBoxItem Content="LZSS  (~200B decoder, best ratio)"  Tag="Lzss"/>
+                                    </ComboBox>
+
+                                    <!-- Animation Layout -->
+                                    <TextBlock Text="Animation layout"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"
+                                               Visibility="{Binding IsAnimationEnabled, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <ComboBox x:Name="CboAnimationLayout"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="26"
+                                              Margin="0,0,0,12"
+                                              SelectedIndex="{Binding AnimationLayout}"
+                                              Visibility="{Binding IsAnimationEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <ComboBoxItem Content="Array of frames (pointers)"/>
+                                        <ComboBoxItem Content="Vertical Sprite Sheet (tall)"/>
+                                        <ComboBoxItem Content="Horizontal Sprite Sheet (wide)"/>
+                                    </ComboBox>
+
+                                    <!-- Sprite name -->
+                                    <TextBlock Text="Variable / sprite name"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtSpriteName"
+                                             Style="{StaticResource ModernTextBoxStyle}"
+                                             Height="26"
+                                             FontFamily="{DynamicResource Font.Code}"
+                                             Text="{Binding SpriteName, UpdateSourceTrigger=PropertyChanged}"
+                                             Margin="0,0,0,4"
+                                             ToolTip="Will be sanitised to a valid C/Python identifier"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ─── Code structure options ──────── -->
+                            <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                    BorderThickness="0"
+                                    CornerRadius="6"
+                                    Padding="8"
+                                    Margin="0,0,0,8">
+                                <StackPanel>
+                                    <TextBlock Text="CODE STRUCTURE OPTIONS"
+                                               Style="{StaticResource HeaderStyle}"
+                                               Margin="0,0,0,12"/>
+
+                                    <!-- Checkbox Grid for perfect alignment -->
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <CheckBox Grid.Row="0" Grid.Column="0" Content="Usage comment"
+                                                  IsChecked="{Binding IncludeUsageComment}"
+                                                  Foreground="{DynamicResource Brush.Text.Muted}"
+                                                  FontSize="11"
+                                                  Margin="0,0,12,8"/>
+                                        <CheckBox Grid.Row="0" Grid.Column="1" Content="Width/height constants"
+                                                  IsChecked="{Binding IncludeDimensionConstants}"
+                                                  Foreground="{DynamicResource Brush.Text.Muted}"
+                                                  FontSize="11"
+                                                  Margin="0,0,0,8"/>
+
+                                        <CheckBox Grid.Row="1" Grid.Column="0" Content="Row comments"
+                                                  IsChecked="{Binding IncludeRowComments}"
+                                                  Foreground="{DynamicResource Brush.Text.Muted}"
+                                                  FontSize="11"
+                                                  Margin="0,0,12,8"/>
+                                        <CheckBox Grid.Row="1" Grid.Column="1" Content="Comma separator"
+                                                  IsChecked="{Binding UseCommaSeparator}"
+                                                  IsEnabled="{Binding IsCommaSeparatorEnabled}"
+                                                  Foreground="{DynamicResource Brush.Text.Muted}"
+                                                  FontSize="11"
+                                                  Margin="0,0,0,8"/>
+
+                                        <CheckBox Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Content="Array size"
+                                                  IsChecked="{Binding IncludeArraySize}"
+                                                  Foreground="{DynamicResource Brush.Text.Muted}"
+                                                  FontSize="11"/>
+                                    </Grid>
+
+                                    <!-- Bytes per line -->
+                                    <TextBlock Text="Bytes per line"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"/>
+                                    <WrapPanel Margin="0,0,0,12">
+                                        <RadioButton x:Name="RbBpl0"
+                                                     Content="canvas width"
+                                                     GroupName="BytesPerLine"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     IsChecked="True"
+                                                     Checked="BplChip_Checked"
+                                                     Tag="0"
+                                                     Margin="0,0,8,0"/>
+                                        <RadioButton x:Name="RbBpl4"
+                                                     Content="4"
+                                                     GroupName="BytesPerLine"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     Checked="BplChip_Checked"
+                                                     Tag="4"
+                                                     Margin="0,0,8,0"/>
+                                        <RadioButton x:Name="RbBpl8"
+                                                     Content="8"
+                                                     GroupName="BytesPerLine"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     Checked="BplChip_Checked"
+                                                     Tag="8"
+                                                     Margin="0,0,8,0"/>
+                                        <RadioButton x:Name="RbBpl16"
+                                                     Content="16"
+                                                     GroupName="BytesPerLine"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     Checked="BplChip_Checked"
+                                                     Tag="16"/>
+                                    </WrapPanel>
+
+                                    <!-- Hex case -->
+                                    <TextBlock Text="Hex digits"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton x:Name="RbHexUpper"
+                                                     Content="0xFF"
+                                                     GroupName="HexCase"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     IsChecked="True"
+                                                     Checked="HexCase_Checked"
+                                                     Tag="upper"
+                                                     Margin="0,0,8,0"/>
+                                        <RadioButton x:Name="RbHexLower"
+                                                     Content="0xff"
+                                                     GroupName="HexCase"
+                                                     Style="{StaticResource ChipButtonStyle}"
+                                                     Checked="HexCase_Checked"
+                                                     Tag="lower"/>
+                                    </StackPanel>
+
+                                    <!-- Full sketch toggle -->
+                                    <CheckBox Content="Full Sketch (.ino / .py)"
+                                              IsChecked="{Binding GenerateFullSketch, Mode=TwoWay}"
+                                              Foreground="{DynamicResource Brush.Text.Primary}"
+                                              FontSize="11"
+                                              Margin="0,12,0,0"
+                                              ToolTip="Generate a complete, ready-to-run sketch/script with display setup and animation loops"/>
+
+                                </StackPanel>
+                            </Border>
+
+                            <!-- ─── Code output box with header bar ──────── -->
+                            <Border x:Name="CodeOutputBorder"
+                                    Background="{DynamicResource Brush.Surface.Base}"
+                                    CornerRadius="6"
+                                    BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                    BorderThickness="1"
+                                    ClipToBounds="True"
+                                    MinHeight="120"
+                                    Height="220"
+                                    MaxHeight="700">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- Output header bar -->
+                                    <Border Grid.Row="0" Padding="12,6"
+                                            BorderThickness="0,0,0,1"
+                                            BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                            Background="{DynamicResource Brush.Surface.Overlay}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0"
+                                                       Text="OUTPUT"
+                                                       Foreground="{DynamicResource Brush.Text.Muted}"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       Opacity="0.8"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Style="{StaticResource ModernButtonStyle}"
+                                                    Padding="6,2"
+                                                    Click="PopOutCode_Click"
+                                                    ToolTip="Open in separate resizable window"
+                                                    VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="↗" FontSize="11" FontWeight="Bold" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="Pop Out" FontSize="10.5" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Code content -->
+                                    <ScrollViewer Grid.Row="1"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  HorizontalScrollBarVisibility="Auto"
+                                                  Background="Transparent">
+                                        <rendering:SyntaxHighlightBox x:Name="CodeOutputBox"
+                                                                      FontFamily="{DynamicResource Font.Code}"
+                                                                      FontSize="12"
+                                                                      Margin="8"/>
+                                    </ScrollViewer>
+
+                                    <!-- Bottom resize handle -->
+                                    <Border Grid.Row="2"
+                                            Height="8"
+                                            Background="{DynamicResource Brush.Surface.Overlay}"
+                                            BorderBrush="{DynamicResource Brush.Border.Separator}"
+                                            BorderThickness="0,1,0,0"
+                                            Cursor="SizeNS"
+                                            MouseLeftButtonDown="CodeResizeHandle_MouseDown"
+                                            MouseMove="CodeResizeHandle_MouseMove"
+                                            MouseLeftButtonUp="CodeResizeHandle_MouseUp"
+                                            ToolTip="Drag up/down to resize code box">
+                                        <Rectangle Width="28" Height="2"
+                                                   RadiusX="1" RadiusY="1"
+                                                   Fill="{DynamicResource Brush.Text.Muted}"
+                                                   Opacity="0.4"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
+                            <!-- Generate Code + Copy buttons -->
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Button Grid.Column="0"
+                                        Style="{StaticResource AccentButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        Padding="8"
+                                        Command="{Binding GenerateCodeCommand}"
+                                        ToolTip="Regenerate code from current canvas data (F5)">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="⟳" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Generate Code" FontSize="11.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <Button x:Name="BtnCopyCode"
+                                        Grid.Column="2"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        Width="78"
+                                        Padding="0,8"
+                                        Command="{Binding CopyExportedCodeCommand}"
+                                        Click="BtnCopyCode_Click"
+                                        ToolTip="Copy generated code to clipboard (Ctrl+C)">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Grid Width="14" Height="14" Margin="0,0,5,0" VerticalAlignment="Center">
+                                            <Path x:Name="IconCopyCode"
+                                                  Style="{StaticResource StrokedToolIconStyle}"
+                                                  Width="13" Height="13"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Data="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM15 5H8C6.9 5 6.01 5.9 6.01 7L6 21C6 22.1 6.89 23 7.99 23H19C20.1 23 21 22.1 21 21V11L15 5ZM8 21V7H14V12H19V21H8Z" />
+                                            <TextBlock x:Name="IconCopiedCheck"
+                                                       Text="✓"
+                                                       FontSize="12"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource Brush.Accent.Base}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Visibility="Collapsed"/>
+                                        </Grid>
+                                        <TextBlock x:Name="TxtCopyCode"
+                                                   Text="Copy"
+                                                   FontSize="11.5"
+                                                   FontWeight="Medium"
+                                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <!-- Export Arduino Sketch Folder button -->
+                            <Button Style="{StaticResource ModernButtonStyle}"
+                                    HorizontalAlignment="Stretch"
+                                    Padding="8"
+                                    Margin="0,6,0,0"
+                                    Command="{Binding ExportArduinoSketchFolderCommand}"
+                                    Visibility="{Binding IsArduinoSketchExportable, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                    ToolTip="Export complete Arduino IDE sketch folder (&lt;name&gt;/&lt;name&gt;.ino + sprites.h)">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="📁" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Export Arduino Sketch Folder" FontSize="11" FontWeight="Medium" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Status and Stats -->
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <!-- Stale indicator -->
+                                <TextBlock Grid.Column="0"
+                                           Text="⟳ Code is outdated"
+                                           Foreground="{DynamicResource Brush.Status.Warning}"
+                                           FontSize="10.5"
+                                           Opacity="0.85">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Hidden"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsCodeStale}" Value="True">
+                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+
+                                <!-- Export Stats -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding ExportStats}"
+                                           Foreground="{DynamicResource Brush.Text.Muted}"
+                                           FontSize="10"
+                                           FontFamily="{DynamicResource Font.Code}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Center"
+                                           Opacity="0.8"/>
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+                </Border>
+
+                <!-- ═══════════════════════════════════════════════════════
+                     IMPORT FROM CODE
+                     ═══════════════════════════════════════════════════════ -->
+                <Border Background="{DynamicResource Brush.Surface.Overlay}"
+                        CornerRadius="8"
+                        BorderBrush="{DynamicResource Brush.Border.Base}"
+                        BorderThickness="1"
+                        Margin="0"
+                        Padding="8">
+                <StackPanel>
+                    <Expander Style="{StaticResource ModernExpanderStyle}"
+                              IsExpanded="{Binding IsImportExpanded, Mode=TwoWay}">
+                        <Expander.Header>
+                            <!-- Header -->
+                            <StackPanel Orientation="Horizontal" Margin="4,0,0,0">
+                                <TextBlock Text="📥" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="IMPORT" Style="{StaticResource HeaderStyle}" Margin="0" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Expander.Header>
+
+                        <StackPanel Margin="0,12,0,0">
+                            <TextBlock Text="Import sprite data by pasting code snippets, scanning linked source files, converting images/GIFs, or loading Flipper Zero assets."
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource Brush.Text.Muted}"
+                                       FontSize="11"
+                                       Margin="4,0,4,12"
+                                       LineHeight="16"/>
+
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                
+                                <Button Grid.Row="0"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        Click="ImportFromCode_Click"
+                                        ToolTip="Open the Import from Code dialog"
+                                        Padding="8,8">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="⌨" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Import from Code…" FontSize="11.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <Button Grid.Row="1"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        Click="ImportFromFile_Click"
+                                        Padding="8,8"
+                                        Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="📄" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Import from File…" FontSize="11.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <Button Grid.Row="2"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        Click="ImportBitmap_Click"
+                                        Padding="8,8"
+                                        Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="🖼" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Import Bitmap…" FontSize="11.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                
+                                <Button Grid.Row="3"
+                                        Style="{StaticResource ModernButtonStyle}"
+                                        HorizontalAlignment="Stretch"
+                                        Click="ImportFlipper_Click"
+                                        ToolTip="Import Flipper Zero animation (meta.txt) or bitmap (.bm)"
+                                        Padding="8,8"
+                                        Margin="0,8,0,0">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                                        <TextBlock Text="🐬" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Import from Flipper Zero…" FontSize="11.5" FontWeight="Medium" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+                    </Expander>
+                </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>
+

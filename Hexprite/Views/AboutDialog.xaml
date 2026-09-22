@@ -1,0 +1,192 @@
+<Window x:Class="Hexprite.Views.AboutDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="clr-namespace:Hexprite.Core"
+        Title="About Hexprite"
+        Width="420" SizeToContent="Height" MinHeight="380"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{DynamicResource Brush.Surface.Base}"
+        FontFamily="{DynamicResource Font.Primary}"
+        ShowInTaskbar="False"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        core:WindowChromeHelper.ForceRoundedCorners="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="34"
+                      CornerRadius="0"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="5"
+                      UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Border Style="{StaticResource DialogWindowBorderStyle}">
+        <Border.RenderTransform>
+            <TranslateTransform Y="20" />
+        </Border.RenderTransform>
+        <Border.Triggers>
+            <EventTrigger RoutedEvent="Loaded">
+                <BeginStoryboard>
+                    <Storyboard>
+                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.2" />
+                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" To="0" Duration="0:0:0.25">
+                            <DoubleAnimation.EasingFunction>
+                                <ExponentialEase EasingMode="EaseOut" Exponent="4" />
+                            </DoubleAnimation.EasingFunction>
+                        </DoubleAnimation>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger>
+        </Border.Triggers>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- TITLE BAR -->
+            <Border Grid.Row="0" Background="{DynamicResource Brush.Surface.MenuBar}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="12" VerticalAlignment="Center"
+                               Margin="12,0,0,0" IsHitTestVisible="False"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Button Click="CaptionClose_Click" ToolTip="Close" Width="44" Height="34"
+                                Style="{StaticResource CaptionCloseButtonStyle}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="10"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- MAIN CONTENT -->
+            <Grid Grid.Row="1" Margin="16,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Hero Section: Logo & Name -->
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,12,0,16">
+                    <Border Width="72" Height="72" Margin="0,0,0,12" CornerRadius="12">
+                        <Border.Background>
+                            <ImageBrush ImageSource="pack://application:,,,/Hexprite;component/Assets/LogoMark.png" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Border.Background>
+                    </Border>
+                    
+                    <TextBlock Text="Hexprite"
+                               FontSize="26"
+                               FontWeight="Bold"
+                               TextAlignment="Center"
+                               Foreground="{DynamicResource Brush.Text.Primary}" />
+                    
+                    <Border Background="{DynamicResource Brush.Surface.Elevated}" 
+                            HorizontalAlignment="Center" 
+                            Padding="8,4" 
+                            CornerRadius="6" 
+                            Margin="0,8,0,0">
+                        <TextBlock x:Name="TxtVersion"
+                                   Text="Version 1.0.0"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Brush.Accent.Base}" />
+                    </Border>
+                </StackPanel>
+
+                <!-- Description -->
+                <TextBlock Grid.Row="1"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           Foreground="{DynamicResource Brush.Text.Primary}"
+                           FontSize="14"
+                           LineHeight="22"
+                           Opacity="0.85"
+                           Margin="12,0,12,16">
+                    Hexprite is a indie desktop application specifically engineered for embedded software engineers, firmware developers, makers, pixel artists, and retro-computing hardware enthusiasts. It bridges the gap between creative visual pixel art design and the rigid memory, format, and display constraints of embedded hardware displays (such as SSD1306, SH1106, e-Paper, and Flipper Zero).
+                </TextBlock>
+
+                <!-- Details Grid -->
+                <Border Grid.Row="2" 
+                        Background="{DynamicResource Brush.Surface.MenuBar}" 
+                        CornerRadius="8" 
+                        Padding="12"
+                        Margin="0,0,0,16">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="6" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="6" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="90" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Engine" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="WPF / .NET 10" Foreground="{DynamicResource Brush.Text.Primary}" FontSize="12" FontWeight="SemiBold" />
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="License" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="2" Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                            <Hyperlink x:Name="LicenseLink"
+                                       Style="{StaticResource HyperlinkStyle}"
+                                       NavigateUri="https://hexprite.com/license"
+                                       RequestNavigate="Hyperlink_RequestNavigate">
+                                GNU GPLv3
+                            </Hyperlink>
+                        </TextBlock>
+
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Website" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" VerticalAlignment="Center" />
+                        <TextBlock Grid.Row="4" Grid.Column="1" FontSize="12" FontWeight="SemiBold">
+                            <Hyperlink x:Name="WebsiteLink"
+                                       Style="{StaticResource HyperlinkStyle}"
+                                       NavigateUri="https://hexprite.com"
+                                       RequestNavigate="Hyperlink_RequestNavigate">
+                                hexprite.com
+                            </Hyperlink>
+                        </TextBlock>
+
+                        <TextBlock Grid.Row="5" Grid.Column="0" Text="Update" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,6,0,0"
+                                   Visibility="{Binding HasUpdate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        <TextBlock Grid.Row="5" Grid.Column="1" FontSize="12" FontWeight="SemiBold" Margin="0,6,0,0"
+                                   Visibility="{Binding HasUpdate, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Hyperlink Style="{StaticResource HyperlinkStyle}"
+                                       NavigateUri="{Binding UpdateUrl}"
+                                       RequestNavigate="Hyperlink_RequestNavigate">
+                                <Run Text="{Binding UpdateVersionText, Mode=OneWay}" />
+                            </Hyperlink>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!-- Footer (Copyright + Close) -->
+                <Grid Grid.Row="4" VerticalAlignment="Bottom">
+                    <TextBlock Text="© 2026 Intisar Bin Naim"
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontSize="11"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left" />
+                    
+                    <Button Content="Done"
+                            Width="72" MinHeight="28"
+                            Style="{StaticResource ModernButtonStyle}"
+                            HorizontalAlignment="Right"
+                            Click="Close_Click"
+                            IsDefault="True"
+                            IsCancel="True" />
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
