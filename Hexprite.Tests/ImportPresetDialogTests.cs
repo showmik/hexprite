@@ -1,3 +1,4 @@
+using Hexprite.Core;
 using Hexprite.Services;
 using Hexprite.Views;
 using System;
@@ -15,13 +16,27 @@ namespace Hexprite.Tests
     [Trait("Category", "Unit")]
     public class ImportPresetDialogTests
     {
-        private static string CreateTempPng()
+        private static string CreateTempPng(int width = 2, int height = 2)
         {
             string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.png");
-            var bitmap = new WriteableBitmap(2, 2, 96, 96, PixelFormats.Bgra32, null);
+            var bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
             using var stream = File.OpenWrite(path);
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            encoder.Save(stream);
+            return path;
+        }
+
+        private static string CreateTempGif(int width, int height, int frameCount = 3)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.gif");
+            var encoder = new GifBitmapEncoder();
+            for (int f = 0; f < frameCount; f++)
+            {
+                var bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+                encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            }
+            using var stream = File.OpenWrite(path);
             encoder.Save(stream);
             return path;
         }
@@ -414,6 +429,98 @@ namespace Hexprite.Tests
                     Assert.True(chipDefault.IsChecked);
                     Assert.False(chipCustom.IsChecked);
                     Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Default), txtDesc.Text);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
+
+        [Fact]
+        public void ImportBitmapDialog_WithCustomImageDimensions_InitializesMaxDimensionToNaturalSizeAndUpdatesSourceText()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempPng(32, 48);
+                try
+                {
+                    var initialSettings = new BitmapImportSettings
+                    {
+                        MaxDimension = SpriteState.MaxDimension
+                    };
+
+                    using var dlg = new ImportBitmapDialog(tempFile, initialSettings);
+                    var txtMax = (TextBox)dlg.FindName("TxtMaxDimension");
+                    var sldMax = (Slider)dlg.FindName("SldMaxDimension");
+                    var txtSource = (TextBlock)dlg.FindName("TxtSourceFile");
+
+                    Assert.NotNull(txtMax);
+                    Assert.NotNull(sldMax);
+                    Assert.NotNull(txtSource);
+
+                    // Natural max of 32x48 is 48
+                    Assert.Equal("48", txtMax.Text);
+                    Assert.Equal(48, (int)sldMax.Value);
+                    Assert.Contains("(32 × 48 px)", txtSource.Text);
+
+                    // Tweak max dimension to 20
+                    txtMax.Text = "20";
+                    Assert.Equal(20, (int)sldMax.Value);
+
+                    // Reset to defaults -> should reset back to natural max 48
+                    var resetMethod = typeof(ImportBitmapDialog).GetMethod("Reset_Click", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Assert.NotNull(resetMethod);
+                    resetMethod.Invoke(dlg, new object?[] { null, new System.Windows.RoutedEventArgs() });
+
+                    Assert.Equal("48", txtMax.Text);
+                    Assert.Equal(48, (int)sldMax.Value);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
+
+        [Fact]
+        public void ImportAnimationDialog_WithCustomGifDimensions_InitializesMaxDimensionToNaturalSizeAndUpdatesSourceText()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempGif(64, 32, 4);
+                try
+                {
+                    var initialSettings = new AnimationImportSettings
+                    {
+                        MaxDimension = SpriteState.MaxDimension
+                    };
+
+                    using var dlg = new ImportAnimationDialog(tempFile, initialSettings);
+                    var txtMax = (TextBox)dlg.FindName("TxtMaxDimension");
+                    var sldMax = (Slider)dlg.FindName("SldMaxDimension");
+                    var txtSource = (TextBlock)dlg.FindName("TxtSourceFile");
+
+                    Assert.NotNull(txtMax);
+                    Assert.NotNull(sldMax);
+                    Assert.NotNull(txtSource);
+
+                    // Natural max of 64x32 is 64
+                    Assert.Equal("64", txtMax.Text);
+                    Assert.Equal(64, (int)sldMax.Value);
+                    Assert.Contains("(64 × 32 px, 4 frames)", txtSource.Text);
+
+                    // Tweak max dimension to 16
+                    txtMax.Text = "16";
+                    Assert.Equal(16, (int)sldMax.Value);
+
+                    // Reset to defaults -> should reset back to natural max 64
+                    var resetMethod = typeof(ImportAnimationDialog).GetMethod("Reset_Click", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Assert.NotNull(resetMethod);
+                    resetMethod.Invoke(dlg, new object?[] { null, new System.Windows.RoutedEventArgs() });
+
+                    Assert.Equal("64", txtMax.Text);
+                    Assert.Equal(64, (int)sldMax.Value);
                 }
                 finally
                 {

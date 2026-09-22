@@ -25,6 +25,7 @@ namespace Hexprite.Views
         private bool _isApplyingPreset;
         private bool _shouldFitPreviewToFrame;
         private System.Collections.Generic.List<BitmapSource>? _cachedFrames;
+        private readonly int _naturalMaxDimension = SpriteState.MaxDimension;
 
         public ImportAnimationDialog(string fileName, AnimationImportSettings initialSettings)
         {
@@ -33,7 +34,37 @@ namespace Hexprite.Views
 
             Closed += (_, _) => Dispose();
 
-            TxtSourceFile.Text = System.IO.Path.GetFileName(fileName);
+            int origW = 0, origH = 0, frameCount = 0;
+            try
+            {
+                if (!string.IsNullOrEmpty(fileName) && System.IO.File.Exists(fileName))
+                {
+                    using var stream = System.IO.File.OpenRead(fileName);
+                    var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+                    frameCount = decoder.Frames.Count;
+                    if (frameCount > 0)
+                    {
+                        origW = decoder.Frames[0].PixelWidth;
+                        origH = decoder.Frames[0].PixelHeight;
+                        FrameSlider.Maximum = frameCount;
+                        FrameCountTextBlock.Text = string.Create(CultureInfo.InvariantCulture, $"/ {frameCount}");
+                    }
+                }
+            }
+            catch { }
+
+            if (origW > 0 && origH > 0)
+            {
+                TxtSourceFile.Text = frameCount > 0
+                    ? $"{System.IO.Path.GetFileName(fileName)} ({origW} × {origH} px, {frameCount} frames)"
+                    : $"{System.IO.Path.GetFileName(fileName)} ({origW} × {origH} px)";
+                _naturalMaxDimension = Math.Clamp(Math.Max(origW, origH), 1, SpriteState.MaxDimension);
+            }
+            else
+            {
+                TxtSourceFile.Text = System.IO.Path.GetFileName(fileName);
+                _naturalMaxDimension = SpriteState.MaxDimension;
+            }
             
             _isUpdatingFromCode = true;
             
@@ -83,8 +114,18 @@ namespace Hexprite.Views
             TxtDitherAmount.Text = Math.Clamp(initialSettings.DitherAmount, 0, 100).ToString(CultureInfo.InvariantCulture);
             SldDitherAmount.Value = Math.Clamp(initialSettings.DitherAmount, 0, 100);
             
-            TxtMaxDimension.Text = Math.Clamp(initialSettings.MaxDimension, 1, SpriteState.MaxDimension).ToString(CultureInfo.InvariantCulture);
-            SldMaxDimension.Value = Math.Clamp(initialSettings.MaxDimension, 1, SpriteState.MaxDimension);
+            int initMax = initialSettings.MaxDimension;
+            if (initMax <= 0 || initMax >= SpriteState.MaxDimension)
+            {
+                initMax = _naturalMaxDimension;
+            }
+            else
+            {
+                initMax = Math.Clamp(initMax, 1, SpriteState.MaxDimension);
+            }
+
+            TxtMaxDimension.Text = initMax.ToString(CultureInfo.InvariantCulture);
+            SldMaxDimension.Value = initMax;
             ChkInvert.IsChecked = initialSettings.Invert;
             ChkSerpentine.IsChecked = initialSettings.UseSerpentineScanning;
             ChkGammaCorrection.IsChecked = initialSettings.UseGammaCorrection;
@@ -99,19 +140,6 @@ namespace Hexprite.Views
             
             UpdateThresholdUiState();
             _shouldFitPreviewToFrame = true;
-            
-            try
-            {
-                using var stream = System.IO.File.OpenRead(fileName);
-                var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
-                int frameCount = decoder.Frames.Count;
-                if (frameCount > 0)
-                {
-                    FrameSlider.Maximum = frameCount;
-                    FrameCountTextBlock.Text = string.Create(CultureInfo.InvariantCulture, $"/ {frameCount}");
-                }
-            }
-            catch { }
             
             ChipPresetDefault.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Default);
             ChipPresetPhoto.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Photo);
@@ -337,8 +365,8 @@ namespace Hexprite.Views
             SldDitherAmount.Value = 100;
             TxtDitherAmount.Text = "100";
             
-            SldMaxDimension.Value = SpriteState.MaxDimension;
-            TxtMaxDimension.Text = SpriteState.MaxDimension.ToString(CultureInfo.InvariantCulture);
+            SldMaxDimension.Value = _naturalMaxDimension;
+            TxtMaxDimension.Text = _naturalMaxDimension.ToString(CultureInfo.InvariantCulture);
 
             ChkInvert.IsChecked = false;
             ChkSerpentine.IsChecked = false;
