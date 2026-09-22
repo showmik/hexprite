@@ -2319,7 +2319,7 @@ namespace Hexprite.ViewModels
 
             OpenPinoutGuideCommand = new RelayCommand(() =>
             {
-                ConfigureHardwarePreviewWiringCommand.Execute(null);
+                ConfigureHardwarePreviewWiringCommand.Execute(parameter: null);
             });
 
             AutoDetectBaudRateCommand = new AsyncRelayCommand(AutoDetectBaudRateAsync);
@@ -3102,12 +3102,11 @@ namespace Hexprite.ViewModels
                 }
                 else
                 {
-                    selectedIndices = Frames
+                    selectedIndices = [.. Frames
                         .Select((f, i) => new { f, i })
                         .Where(x => x.f.IsSelected)
                         .Select(x => x.i)
-                        .Order()
-                        .ToList();
+                        .Order()];
                         
                     if (selectedIndices.Count == 0)
                     {
@@ -3174,12 +3173,11 @@ namespace Hexprite.ViewModels
                 }
                 else
                 {
-                    selectedIndices = Frames
+                    selectedIndices = [.. Frames
                         .Select((f, i) => new { f, i })
                         .Where(x => x.f.IsSelected)
                         .Select(x => x.i)
-                        .OrderDescending()
-                        .ToList();
+                        .OrderDescending()];
                         
                     if (selectedIndices.Count == 0)
                     {
@@ -3200,7 +3198,7 @@ namespace Hexprite.ViewModels
                 }
 
                 SaveStateForUndo();
-                foreach (var idx in selectedIndices.OrderByDescending(x => x))
+                foreach (var idx in selectedIndices.OrderDescending())
                 {
                     SpriteState.Frames.RemoveAt(idx);
                     SpriteState.RemoveGlobalBackupAt(idx);

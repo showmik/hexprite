@@ -134,5 +134,45 @@ namespace Hexprite.Tests
             byte[] bytes = File.ReadAllBytes(gifPath);
             Assert.True(bytes.Length > 0);
         }
+
+        [Fact]
+        public void ExportGif_LargeAnimationWithComplexPixels_DecodesCorrectly()
+        {
+            // Create a sprite with 4 frames of 128x64 with varying pixel patterns
+            var sprite = new SpriteState(128, 64);
+            sprite.Frames.Clear();
+
+            var rand = new Random(42);
+            for (int f = 0; f < 4; f++)
+            {
+                var frame = new FrameState { Name = $"Frame {f + 1}" };
+                bool[] pixels = new bool[128 * 64];
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    pixels[i] = rand.Next(2) == 1;
+                }
+                frame.LayerPixels.Add(new MonochromePixelBuffer(pixels));
+                sprite.Frames.Add(frame);
+            }
+
+            string gifPath = Path.Combine(_tempDirectory, "complex_anim.gif");
+            _service.ExportGif(sprite, gifPath, scale: 1, fps: 10);
+
+            Assert.True(File.Exists(gifPath));
+
+            // Verify it decodes cleanly through WPF BitmapDecoder
+            using var fs = File.OpenRead(gifPath);
+            var decoder = System.Windows.Media.Imaging.BitmapDecoder.Create(
+                fs,
+                System.Windows.Media.Imaging.BitmapCreateOptions.IgnoreColorProfile,
+                System.Windows.Media.Imaging.BitmapCacheOption.OnLoad);
+
+            Assert.Equal(4, decoder.Frames.Count);
+            foreach (var frame in decoder.Frames)
+            {
+                Assert.Equal(128, frame.PixelWidth);
+                Assert.Equal(64, frame.PixelHeight);
+            }
+        }
     }
 }

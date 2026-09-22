@@ -16,8 +16,11 @@ namespace Hexprite.Services
         private readonly ushort _width;
         private readonly ushort _height;
         private Color[] _palette = [];
-        private bool _isFinished;
         private bool _isDisposed;
+        private bool _isFinished;
+        private bool _gctWritten;
+        private bool _netscapeWritten;
+        private ushort? _loopCount;
 
         // Reusable buffers to minimize GC allocations across animation frames
         private readonly int[] _hashTable = new int[HashTableSize];
@@ -70,6 +73,14 @@ namespace Hexprite.Services
             ArgumentNullException.ThrowIfNull(colors);
             _palette = colors.Length == 0 ? [Colors.Transparent, Colors.Black] : colors;
 
+            EnsureGlobalColorTableWritten();
+        }
+
+        private void EnsureGlobalColorTableWritten()
+        {
+            if (_gctWritten) return;
+            _gctWritten = true;
+
             // Write Global Color Table (always 256 colors for maximum compatibility)
             for (int i = 0; i < 256; i++)
             {
@@ -86,6 +97,11 @@ namespace Hexprite.Services
                     _stream.WriteByte(0);
                 }
             }
+
+            if (_loopCount.HasValue && !_netscapeWritten)
+            {
+                WriteNetscapeExtension(_loopCount.Value);
+            }
         }
 
         /// <summary>
@@ -94,6 +110,18 @@ namespace Hexprite.Services
         /// <param name="loopCount">Number of loops (0 for infinite).</param>
         public void SetLoop(ushort loopCount)
         {
+            _loopCount = loopCount;
+            if (_gctWritten && !_netscapeWritten)
+            {
+                WriteNetscapeExtension(loopCount);
+            }
+        }
+
+        private void WriteNetscapeExtension(ushort loopCount)
+        {
+            if (_netscapeWritten) return;
+            _netscapeWritten = true;
+
             // Application Extension for Netscape Looping
             _stream.WriteByte(0x21); // Extension Introducer
             _stream.WriteByte(0xFF); // Application Extension Label
@@ -143,6 +171,8 @@ namespace Hexprite.Services
             {
                 throw new ArgumentException($"Indexed pixel buffer length ({indexedPixels.Length}) must equal frame width * height ({expectedLength}).", nameof(indexedPixels));
             }
+
+            EnsureGlobalColorTableWritten();
 
             var activePalette = localPalette ?? _palette;
 
@@ -230,6 +260,7 @@ namespace Hexprite.Services
             }
 
             _isFinished = true;
+            EnsureGlobalColorTableWritten();
             _stream.WriteByte(0x3B); // Trailer
             _stream.Flush();
         }

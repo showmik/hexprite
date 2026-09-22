@@ -381,5 +381,97 @@ namespace Hexprite.Tests
                 if (File.Exists(tempPath)) File.Delete(tempPath);
             }
         }
+
+        [Fact]
+        public void Export_AnimatedGif_WithDeltaOptimization_AllFramesUseKeepDisposalMethod()
+        {
+            var svc = new ExportService();
+            var state = CreateSampleSprite(16, 16, 3);
+            var tempPath = Path.Combine(Path.GetTempPath(), $"delta_disposal_test_{Guid.NewGuid():N}.gif");
+
+            try
+            {
+                var settings = new ImageExportSettings
+                {
+                    Format = ImageExportFormat.Gif,
+                    Scale = 1,
+                    GifTransparentBackground = false,
+                    GifEnableDeltaOptimization = true,
+                    GifFps = 10
+                };
+
+                svc.Export(tempPath, state, settings);
+
+                Assert.True(File.Exists(tempPath));
+                using var fs = File.OpenRead(tempPath);
+                var decoder = BitmapDecoder.Create(fs, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+                Assert.Equal(3, decoder.Frames.Count);
+
+                for (int i = 0; i < decoder.Frames.Count; i++)
+                {
+                    var meta = decoder.Frames[i].Metadata as BitmapMetadata;
+                    Assert.NotNull(meta);
+                    var disposal = Convert.ToByte(meta.GetQuery("/grctlext/Disposal"), System.Globalization.CultureInfo.InvariantCulture);
+                    // In delta optimization, all frames must use disposal method 1 (Keep)
+                    Assert.Equal(1, disposal);
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
+
+        [Fact]
+        public void ExportBitmaps_ColorGif_WithVaryingFrameDimensions_AndTransparency_ExportsValidGif()
+        {
+            var svc = new ExportService();
+            var tempPath = Path.Combine(Path.GetTempPath(), $"color_gif_varying_{Guid.NewGuid():N}.gif");
+
+            try
+            {
+                // Frame 0: 16x16 with transparency
+                var wb0 = new WriteableBitmap(16, 16, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null);
+                byte[] p0 = new byte[16 * 16 * 4];
+                for (int i = 0; i < p0.Length; i += 4)
+                {
+                    p0[i] = 0;     // B
+                    p0[i + 1] = 0; // G
+                    p0[i + 2] = 255; // R
+                    p0[i + 3] = (byte)(i == 0 ? 0 : 255); // A
+                }
+                wb0.WritePixels(new System.Windows.Int32Rect(0, 0, 16, 16), p0, 16 * 4, 0);
+
+                // Frame 1: 24x20 (different dimension) with green and transparency
+                var wb1 = new WriteableBitmap(24, 20, 96, 96, System.Windows.Media.PixelFormats.Bgra32, null);
+                byte[] p1 = new byte[24 * 20 * 4];
+                for (int i = 0; i < p1.Length; i += 4)
+                {
+                    p1[i] = 0;     // B
+                    p1[i + 1] = 255; // G
+                    p1[i + 2] = 0; // R
+                    p1[i + 3] = (byte)(i == 0 ? 0 : 255); // A
+                }
+                wb1.WritePixels(new System.Windows.Int32Rect(0, 0, 24, 20), p1, 24 * 4, 0);
+
+                var settings = new ImageExportSettings
+                {
+                    Format = ImageExportFormat.Gif,
+                    GifFps = 10,
+                    GifLoopInfinite = true
+                };
+
+                svc.ExportBitmaps(tempPath, new[] { wb0, wb1 }, settings);
+
+                Assert.True(File.Exists(tempPath));
+                using var fs = File.OpenRead(tempPath);
+                var decoder = BitmapDecoder.Create(fs, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+                Assert.Equal(2, decoder.Frames.Count);
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
     }
 }

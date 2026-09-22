@@ -110,8 +110,13 @@ namespace Hexprite.Services
         {
             if (frames.Count == 0) return;
 
-            int w = frames[0].PixelWidth;
-            int h = frames[0].PixelHeight;
+            int w = 0;
+            int h = 0;
+            foreach (var f in frames)
+            {
+                w = Math.Max(w, f.PixelWidth);
+                h = Math.Max(h, f.PixelHeight);
+            }
             if (w <= 0 || h <= 0) return;
 
             // Convert all frames to standard Bgra32 byte buffers
@@ -124,9 +129,25 @@ namespace Hexprite.Services
                     ? frame
                     : new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
 
-                int stride = w * 4;
-                byte[] raw = new byte[stride * h];
-                formatted.CopyPixels(raw, stride, 0);
+                int fw = frame.PixelWidth;
+                int fh = frame.PixelHeight;
+                int fStride = fw * 4;
+
+                byte[] raw = new byte[w * h * 4];
+                if (fw == w && fh == h)
+                {
+                    formatted.CopyPixels(raw, w * 4, 0);
+                }
+                else
+                {
+                    byte[] fRaw = new byte[fStride * fh];
+                    formatted.CopyPixels(fRaw, fStride, 0);
+                    for (int y = 0; y < fh; y++)
+                    {
+                        Buffer.BlockCopy(fRaw, y * fStride, raw, y * (w * 4), fStride);
+                    }
+                }
+
                 rawFrames.Add(raw);
 
                 for (int p = 0; p < raw.Length; p += 4)
@@ -140,11 +161,27 @@ namespace Hexprite.Services
             var paletteList = new System.Collections.Generic.List<Color>();
             var colorToIndex = new System.Collections.Generic.Dictionary<uint, byte>();
 
-            foreach (uint u in uniqueColors.Take(256))
+            bool hasTransparentPixel = uniqueColors.Any(u => (byte)(u >> 24) == 0);
+            if (hasTransparentPixel)
             {
-                var c = Color.FromArgb((byte)(u >> 24), (byte)(u >> 16), (byte)(u >> 8), (byte)u);
-                colorToIndex[u] = (byte)paletteList.Count;
-                paletteList.Add(c);
+                paletteList.Add(Colors.Transparent);
+            }
+
+            foreach (uint u in uniqueColors)
+            {
+                byte a = (byte)(u >> 24);
+                if (a == 0)
+                {
+                    colorToIndex[u] = 0;
+                    continue;
+                }
+
+                if (paletteList.Count < 256)
+                {
+                    var c = Color.FromArgb(a, (byte)(u >> 16), (byte)(u >> 8), (byte)u);
+                    colorToIndex[u] = (byte)paletteList.Count;
+                    paletteList.Add(c);
+                }
             }
 
             // Fallback if empty
@@ -170,6 +207,7 @@ namespace Hexprite.Services
                 int fps = Math.Clamp(settings.GifFps, 1, 100);
                 int delayMs = 1000 / fps;
                 ushort delayCentiseconds = (ushort)Math.Clamp((int)Math.Round(delayMs / 10.0, MidpointRounding.AwayFromZero), 1, 65535);
+                byte? transIdx = hasTransparentPixel ? (byte)0 : null;
 
                 foreach (var raw in rawFrames)
                 {
@@ -192,7 +230,8 @@ namespace Hexprite.Services
                             byte cg = (byte)(u >> 8);
                             byte cb = (byte)u;
 
-                            for (int palIdx = 0; palIdx < paletteList.Count; palIdx++)
+                            int startIndex = hasTransparentPixel ? 1 : 0;
+                            for (int palIdx = startIndex; palIdx < paletteList.Count; palIdx++)
                             {
                                 var pc = paletteList[palIdx];
                                 int dist = Math.Abs(cr - pc.R) + Math.Abs(cg - pc.G) + Math.Abs(cb - pc.B);
@@ -206,7 +245,7 @@ namespace Hexprite.Services
                         }
                     }
 
-                    encoder.AddFrame(indexed, delayCentiseconds);
+                    encoder.AddFrame(indexed, delayCentiseconds, transparentIndex: transIdx);
                 }
             });
         }
@@ -377,7 +416,8 @@ namespace Hexprite.Services
                         }
                         else
                         {
-                            encoder.AddFrame(currIndexed, delayCentiseconds);
+                            byte disposal = settings.GifEnableDeltaOptimization && !settings.GifTransparentBackground ? (byte)1 : (byte)2;
+                            encoder.AddFrame(currIndexed, delayCentiseconds, disposalMethod: disposal);
                         }
 
                         prevFrameIndexed = currIndexed;

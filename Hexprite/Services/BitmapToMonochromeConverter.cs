@@ -151,62 +151,20 @@ namespace Hexprite.Services
                 bitmap.StreamSource = decodeStream;
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
                 bitmap.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-                if (decodeW != origW)
+                if (wasScaled && (decodeW != origW || decodeH != origH))
+                {
                     bitmap.DecodePixelWidth = decodeW;
-                if (decodeH != origH)
                     bitmap.DecodePixelHeight = decodeH;
+                }
                 bitmap.EndInit();
                 bitmap.Freeze();
                 decoded = bitmap;
             }
 
-            // Apply high-quality scaling if needed
+            // Apply scaling if needed
             if (wasScaled && (decoded.PixelWidth != targetW || decoded.PixelHeight != targetH))
             {
-                double scaleX = targetW / (double)decoded.PixelWidth;
-                double scaleY = targetH / (double)decoded.PixelHeight;
-
-                var transform = new ScaleTransform(scaleX, scaleY);
-                BitmapSource scaled;
-
-                switch (settings.ScalingMode)
-                {
-                    case BitmapScalingMode.NearestNeighbor:
-                        // Use simple TransformedBitmap for nearest neighbor
-                        scaled = new TransformedBitmap(decoded, transform);
-                        break;
-
-                    case BitmapScalingMode.HighQualityBicubic:
-                    case BitmapScalingMode.Fant:
-                    default:
-                        // Use RenderTargetBitmap with high-quality rendering for best results
-                        // Fant (Lanczos) provides the best quality for downscaling
-                        var renderTarget = new RenderTargetBitmap(targetW, targetH, 96, 96, PixelFormats.Pbgra32);
-                        var visual = new System.Windows.Media.DrawingVisual();
-                        using (var context = visual.RenderOpen())
-                        {
-                            var brush = new ImageBrush(decoded)
-                            {
-                                Stretch = Stretch.Fill,
-                            };
-                            // Set high-quality bitmap scaling mode
-                            var wpfScalingMode = settings.ScalingMode == BitmapScalingMode.Fant
-                                ? System.Windows.Media.BitmapScalingMode.Fant
-                                : System.Windows.Media.BitmapScalingMode.HighQuality;
-                            RenderOptions.SetBitmapScalingMode(brush, wpfScalingMode);
-                            context.DrawRectangle(brush, pen: null, new System.Windows.Rect(0, 0, targetW, targetH));
-                        }
-                        renderTarget.Render(visual);
-                        renderTarget.Freeze();
-                        scaled = renderTarget;
-                        break;
-                }
-
-                // M1: Freeze the scaled result to release WPF dispatcher back-references
-                // (TransformedBitmap in the NearestNeighbor path is never frozen otherwise).
-                if (scaled is Freezable freezableScaled && freezableScaled.CanFreeze)
-                    freezableScaled.Freeze();
-                decoded = scaled;
+                decoded = ScaleBitmap(decoded, targetW, targetH, settings.ScalingMode);
             }
 
             return ProcessBgraBitmap(decoded, settings, wasScaled);
@@ -239,15 +197,75 @@ namespace Hexprite.Services
             BitmapSource decoded = source;
             if (wasScaled && (decoded.PixelWidth != targetW || decoded.PixelHeight != targetH))
             {
-                double scaleX = targetW / (double)decoded.PixelWidth;
-                double scaleY = targetH / (double)decoded.PixelHeight;
-                var transform = new ScaleTransform(scaleX, scaleY);
-                var scaled = new TransformedBitmap(decoded, transform);
-                if (scaled.CanFreeze) scaled.Freeze();
-                decoded = scaled;
+                decoded = ScaleBitmap(decoded, targetW, targetH, settings.ScalingMode);
             }
 
             return ProcessBgraBitmap(decoded, settings, wasScaled);
+        }
+
+        private static BitmapSource ScaleBitmap(BitmapSource source, int targetW, int targetH, BitmapScalingMode scalingMode)
+        {
+            if (source.PixelWidth == targetW && source.PixelHeight == targetH)
+                return source;
+
+            if (scalingMode == BitmapScalingMode.NearestNeighbor)
+            {
+                var formatted = source.Format == PixelFormats.Bgra32
+                    ? source
+                    : new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+
+                int srcW = formatted.PixelWidth;
+                int srcH = formatted.PixelHeight;
+                int srcStride = srcW * 4;
+                byte[] srcPixels = new byte[srcStride * srcH];
+                formatted.CopyPixels(srcPixels, srcStride, 0);
+
+                int dstStride = targetW * 4;
+                byte[] dstPixels = new byte[dstStride * targetH];
+
+                for (int y = 0; y < targetH; y++)
+                {
+                    int srcY = Math.Clamp(y * srcH / targetH, 0, srcH - 1);
+                    for (int x = 0; x < targetW; x++)
+                    {
+                        int srcX = Math.Clamp(x * srcW / targetW, 0, srcW - 1);
+                        int srcIdx = srcY * srcStride + srcX * 4;
+                        int dstIdx = y * dstStride + x * 4;
+
+                        dstPixels[dstIdx] = srcPixels[srcIdx];
+                        dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1];
+                        dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2];
+                        dstPixels[dstIdx + 3] = srcPixels[srcIdx + 3];
+                    }
+                }
+
+                var result = BitmapSource.Create(targetW, targetH, 96, 96, PixelFormats.Bgra32, null, dstPixels, dstStride);
+                result.Freeze();
+                return result;
+            }
+            else
+            {
+                var renderTarget = new RenderTargetBitmap(targetW, targetH, 96, 96, PixelFormats.Pbgra32);
+                var visual = new System.Windows.Media.DrawingVisual();
+                using (var context = visual.RenderOpen())
+                {
+                    var brush = new ImageBrush(source)
+                    {
+                        Stretch = Stretch.Fill,
+                    };
+                    var wpfScalingMode = scalingMode switch
+                    {
+                        BitmapScalingMode.Fant => System.Windows.Media.BitmapScalingMode.Fant,
+                        BitmapScalingMode.HighQualityBicubic => System.Windows.Media.BitmapScalingMode.HighQuality,
+                        _ => System.Windows.Media.BitmapScalingMode.Linear
+                    };
+                    RenderOptions.SetBitmapScalingMode(brush, wpfScalingMode);
+                    context.DrawRectangle(brush, pen: null, new System.Windows.Rect(0, 0, targetW, targetH));
+                }
+                renderTarget.Render(visual);
+                renderTarget.Freeze();
+                return renderTarget;
+            }
         }
 
         private static (bool[] Pixels, int Width, int Height, bool WasScaled) ProcessBgraBitmap(

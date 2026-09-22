@@ -116,5 +116,70 @@ namespace Hexprite.Tests
 
             Assert.Empty(result);
         }
+
+        [Fact]
+        public void ConvertAnimatedGif_UniformSampling_SpansTotalAnimationDuration()
+        {
+            // Create a GIF with 20 frames (2.0s total at 100ms each)
+            // Each frame has a single white pixel at (f, 0)
+            const int totalFrames = 20;
+            var tempPath = Path.Combine(Path.GetTempPath(), $"uniform_test_{Guid.NewGuid():N}.gif");
+            var encoder = new GifBitmapEncoder();
+
+            for (int f = 0; f < totalFrames; f++)
+            {
+                var wb = new WriteableBitmap(totalFrames, 4, 96, 96, PixelFormats.Bgra32, null);
+                byte[] pixels = new byte[totalFrames * 4 * 4];
+                // Set pixel at (f, 0) to white
+                int p = f * 4;
+                pixels[p] = 255;
+                pixels[p + 1] = 255;
+                pixels[p + 2] = 255;
+                pixels[p + 3] = 255;
+                wb.WritePixels(new System.Windows.Int32Rect(0, 0, totalFrames, 4), pixels, totalFrames * 4, 0);
+                encoder.Frames.Add(BitmapFrame.Create(wb));
+            }
+
+            using (var fs = File.OpenWrite(tempPath))
+            {
+                encoder.Save(fs);
+            }
+
+            try
+            {
+                var settings = new AnimationImportSettings
+                {
+                    MaxDimension = totalFrames,
+                    TargetFps = 10,
+                    MaxFrames = 4,
+                    UniformSampling = true,
+                    Threshold = 128
+                };
+
+                var (frames, width, height, _) = GifToMonochromeConverter.ConvertAnimatedGif(tempPath, settings);
+
+                Assert.Equal(4, frames.Count);
+
+                // With proper uniform sampling spanning the 2.0s duration, the 4 sampled frames
+                // must sample across the duration (e.g. frames around 0, 5, 10, 15).
+                // The last sampled frame (index 3) should be well past the first 3 frames (e.g. pixel index >= 10).
+                bool lastFrameHasLatePixel = false;
+                for (int x = 10; x < totalFrames; x++)
+                {
+                    if (frames[3][x])
+                    {
+                        lastFrameHasLatePixel = true;
+                        break;
+                    }
+                }
+
+                Assert.True(lastFrameHasLatePixel, "Uniform sampling must span across the entire animation, not truncate to the first maxFrames/fps seconds.");
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
     }
 }
+

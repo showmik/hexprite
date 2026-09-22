@@ -200,166 +200,19 @@ namespace Hexprite.Services
             byte fgR, byte fgG, byte fgB,
             int delayCentiseconds)
         {
-            // 1. Header "GIF89a"
-            stream.Write([(byte)'G', (byte)'I', (byte)'F', (byte)'8', (byte)'9', (byte)'a']);
-
-            // 2. Logical Screen Descriptor
-            WriteUInt16(stream, (ushort)width);
-            WriteUInt16(stream, (ushort)height);
-            stream.WriteByte(0x87); // Global color table flag = 1, color res = 8, 256 colors
-            stream.WriteByte(0x00); // Background color index = 0
-            stream.WriteByte(0x00); // Aspect ratio
-
-            // 3. Global Color Table (256 entries = 768 bytes)
-            byte[] colorTable = new byte[768];
-            // Index 0: Background
-            colorTable[0] = bgR;
-            colorTable[1] = bgG;
-            colorTable[2] = bgB;
-            // Index 1: Foreground
-            colorTable[3] = fgR;
-            colorTable[4] = fgG;
-            colorTable[5] = fgB;
-
-            stream.Write(colorTable, 0, colorTable.Length);
-
-            // 4. Netscape 2.0 Application Extension (Infinite Loop)
-            stream.Write([
-                0x21, 0xFF, 0x0B,
-                (byte)'N', (byte)'E', (byte)'T', (byte)'S', (byte)'C', (byte)'A', (byte)'P', (byte)'E', (byte)'2', (byte)'.', (byte)'0',
-                0x03, 0x01, 0x00, 0x00, 0x00
+            using var encoder = new GifEncoder(stream, (ushort)width, (ushort)height);
+            encoder.SetPalette([
+                System.Windows.Media.Color.FromRgb(bgR, bgG, bgB),
+                System.Windows.Media.Color.FromRgb(fgR, fgG, fgB)
             ]);
+            encoder.SetLoop(0);
 
-            // 5. Write Frames
+            ushort delay = (ushort)Math.Clamp(delayCentiseconds, 1, 65535);
             foreach (var frameData in frames)
             {
-                // Graphics Control Extension
-                stream.Write([0x21, 0xF9, 0x04, 0x04]); // Disposal = 1
-                WriteUInt16(stream, (ushort)delayCentiseconds);
-                stream.WriteByte(0x00); // Transparent color
-                stream.WriteByte(0x00); // Block terminator
-
-                // Image Descriptor
-                stream.WriteByte(0x2C); // Image separator
-                WriteUInt16(stream, 0); // Left
-                WriteUInt16(stream, 0); // Top
-                WriteUInt16(stream, (ushort)width);
-                WriteUInt16(stream, (ushort)height);
-                stream.WriteByte(0x00); // No local color table
-
-                // Image Data (LZW)
-                WriteLzw(stream, frameData, 8);
+                encoder.AddFrame(frameData, delay, disposalMethod: 1);
             }
-
-            // 6. GIF Trailer
-            stream.WriteByte(0x3B);
-        }
-
-        private static void WriteLzw(Stream stream, byte[] indexedPixels, int minCodeSize)
-        {
-            stream.WriteByte((byte)minCodeSize);
-            int clearCode = 1 << minCodeSize;
-            int eoiCode = clearCode + 1;
-            int nextCode = clearCode + 2;
-            int currentCodeSize = minCodeSize + 1;
-            int maxCode = 1 << currentCodeSize;
-
-            var dict = new Dictionary<int, int>(4096);
-            int bitAccumulator = 0;
-            int bitCount = 0;
-            byte[] subBlock = new byte[255];
-            int subBlockPos = 0;
-
-            void EmitBits(int code, int bits)
-            {
-                bitAccumulator |= (code << bitCount);
-                bitCount += bits;
-                while (bitCount >= 8)
-                {
-                    subBlock[subBlockPos++] = (byte)(bitAccumulator & 0xFF);
-                    bitAccumulator >>= 8;
-                    bitCount -= 8;
-                    if (subBlockPos == 255)
-                    {
-                        stream.WriteByte(255);
-                        stream.Write(subBlock, 0, 255);
-                        subBlockPos = 0;
-                    }
-                }
-            }
-
-            void FlushBits()
-            {
-                if (bitCount > 0)
-                {
-                    subBlock[subBlockPos++] = (byte)(bitAccumulator & 0xFF);
-                    bitAccumulator = 0;
-                    bitCount = 0;
-                }
-                if (subBlockPos > 0)
-                {
-                    stream.WriteByte((byte)subBlockPos);
-                    stream.Write(subBlock, 0, subBlockPos);
-                    subBlockPos = 0;
-                }
-                stream.WriteByte(0x00);
-            }
-
-            EmitBits(clearCode, currentCodeSize);
-
-            if (indexedPixels.Length == 0)
-            {
-                EmitBits(eoiCode, currentCodeSize);
-                FlushBits();
-                return;
-            }
-
-            int currentPrefix = indexedPixels[0];
-
-            for (int i = 1; i < indexedPixels.Length; i++)
-            {
-                byte nextChar = indexedPixels[i];
-                int key = (currentPrefix << 8) | nextChar;
-
-                if (dict.TryGetValue(key, out int code))
-                {
-                    currentPrefix = code;
-                }
-                else
-                {
-                    EmitBits(currentPrefix, currentCodeSize);
-
-                    if (nextCode < 4096)
-                    {
-                        dict[key] = nextCode++;
-                        if (nextCode > maxCode && currentCodeSize < 12)
-                        {
-                            currentCodeSize++;
-                            maxCode = 1 << currentCodeSize;
-                        }
-                    }
-                    else
-                    {
-                        EmitBits(clearCode, currentCodeSize);
-                        dict.Clear();
-                        currentCodeSize = minCodeSize + 1;
-                        maxCode = 1 << currentCodeSize;
-                        nextCode = clearCode + 2;
-                    }
-
-                    currentPrefix = nextChar;
-                }
-            }
-
-            EmitBits(currentPrefix, currentCodeSize);
-            EmitBits(eoiCode, currentCodeSize);
-            FlushBits();
-        }
-
-        private static void WriteUInt16(Stream stream, ushort value)
-        {
-            stream.WriteByte((byte)(value & 0xFF));
-            stream.WriteByte((byte)((value >> 8) & 0xFF));
+            encoder.Finish();
         }
     }
 }

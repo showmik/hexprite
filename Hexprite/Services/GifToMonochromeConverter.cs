@@ -180,7 +180,9 @@ namespace Hexprite.Services
             }
 
             desiredFrameCount = Math.Min(desiredFrameCount, maxFrames);
-            double targetTimeStep = 1.0 / Math.Max(1, targetFps);
+            double targetTimeStep = desiredFrameCount > 1 && totalDurationSec > 0
+                ? totalDurationSec / desiredFrameCount
+                : 1.0 / Math.Max(1, targetFps);
 
             for (int i = 0; i < desiredFrameCount; i++)
             {

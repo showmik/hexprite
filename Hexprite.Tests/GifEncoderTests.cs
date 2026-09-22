@@ -305,4 +305,38 @@ public sealed class GifEncoderTests
         Assert.Equal(0, data[lctOffset + 1]);
         Assert.Equal(0, data[lctOffset + 2]);
     }
+
+    [Fact]
+    public void SetLoop_CalledBeforeSetPalette_WritesGlobalColorTableImmediatelyAfterScreenDescriptor()
+    {
+        using var ms = new MemoryStream();
+        using (var encoder = new GifEncoder(ms, 8, 8))
+        {
+            // Call SetLoop before SetPalette
+            encoder.SetLoop(0);
+            encoder.SetPalette([Colors.Red, Colors.Green, Colors.Blue]);
+            encoder.AddFrame(new byte[64], 10);
+        }
+
+        byte[] data = ms.ToArray();
+        // Offset 13 to 13+767 MUST be the GCT
+        // Color 0: Red (255, 0, 0)
+        Assert.Equal(255, data[13]);
+        Assert.Equal(0, data[14]);
+        Assert.Equal(0, data[15]);
+
+        // Color 1: Green
+        Assert.Equal(Colors.Green.R, data[16]);
+        Assert.Equal(Colors.Green.G, data[17]);
+        Assert.Equal(Colors.Green.B, data[18]);
+
+        // The Netscape application extension (0x21, 0xFF, 0x0B, "NETSCAPE2.0") must appear AFTER the GCT (offset 13 + 768 = 781)
+        int netscapeOffset = 13 + 768;
+        Assert.Equal(0x21, data[netscapeOffset]);
+        Assert.Equal(0xFF, data[netscapeOffset + 1]);
+        Assert.Equal(11, data[netscapeOffset + 2]);
+        string appIdent = System.Text.Encoding.ASCII.GetString(data, netscapeOffset + 3, 11);
+        Assert.Equal("NETSCAPE2.0", appIdent);
+    }
 }
+
