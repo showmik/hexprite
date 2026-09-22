@@ -2479,7 +2479,7 @@ namespace Hexprite.ViewModels
             }
         }
 
-        private static BitmapImportSettings LoadBitmapImportSettings()
+        internal static BitmapImportSettings LoadBitmapImportSettings(string? settingsFilePath = null)
         {
             var defaults = new BitmapImportSettings
             {
@@ -2498,19 +2498,22 @@ namespace Hexprite.ViewModels
                 PreserveEdges = false,
             };
 
+            string targetFile = settingsFilePath ?? BitmapImportSettingsFile;
             try
             {
-                if (!File.Exists(BitmapImportSettingsFile))
+                if (!File.Exists(targetFile))
                     return defaults;
 
-                string json = File.ReadAllText(BitmapImportSettingsFile);
+                string json = File.ReadAllText(targetFile);
                 BitmapImportSettings? saved = JsonSerializer.Deserialize<BitmapImportSettings>(json);
                 if (saved == null)
                     return defaults;
 
                 saved.Threshold = Math.Clamp(saved.Threshold, 0, 255);
                 saved.AlphaThreshold = Math.Clamp(saved.AlphaThreshold, 0, 255);
-                saved.MaxDimension = Math.Clamp(saved.MaxDimension, 1, SpriteState.MaxDimension);
+                // MaxDimension is intrinsic to the source image being imported, not a global user preference.
+                // Reset to SpriteState.MaxDimension so previous file dimensions do not pollute future imports.
+                saved.MaxDimension = SpriteState.MaxDimension;
                 saved.Brightness = Math.Clamp(saved.Brightness, -100, 100);
                 saved.Contrast = Math.Clamp(saved.Contrast, -100, 100);
                 saved.DitherAmount = Math.Clamp(saved.DitherAmount, 0, 100);
@@ -2520,22 +2523,48 @@ namespace Hexprite.ViewModels
             }
             catch (Exception ex)
             {
-                HandledErrorReporter.Warning(ex, "ShellViewModel.LoadBitmapImportSettings", new { BitmapImportSettingsFile });
+                HandledErrorReporter.Warning(ex, "ShellViewModel.LoadBitmapImportSettings", new { BitmapImportSettingsFile = targetFile });
                 return defaults;
             }
         }
 
-        private static void SaveBitmapImportSettings(BitmapImportSettings settings)
+        internal static void SaveBitmapImportSettings(BitmapImportSettings settings, string? settingsFilePath = null)
         {
+            string targetFile = settingsFilePath ?? BitmapImportSettingsFile;
             try
             {
-                Directory.CreateDirectory(UserSettingsDirectory);
-                string json = JsonSerializer.Serialize(settings, IndentedJsonOptions);
-                File.WriteAllText(BitmapImportSettingsFile, json);
+                var dir = Path.GetDirectoryName(targetFile);
+                if (!string.IsNullOrEmpty(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                // Clone settings and normalize MaxDimension before saving so file-specific dimensions are not stored
+                var settingsToSave = new BitmapImportSettings
+                {
+                    Preset = settings.Preset,
+                    MaxDimension = SpriteState.MaxDimension,
+                    Threshold = settings.Threshold,
+                    AlphaThreshold = settings.AlphaThreshold,
+                    Invert = settings.Invert,
+                    DitheringAlgorithm = settings.DitheringAlgorithm,
+                    ScalingMode = settings.ScalingMode,
+                    UseSerpentineScanning = settings.UseSerpentineScanning,
+                    UseGammaCorrection = settings.UseGammaCorrection,
+                    UseAdaptiveThresholding = settings.UseAdaptiveThresholding,
+                    PreserveEdges = settings.PreserveEdges,
+                    Sharpen = settings.Sharpen,
+                    Brightness = settings.Brightness,
+                    Contrast = settings.Contrast,
+                    DitherAmount = settings.DitherAmount,
+                };
+
+                string json = JsonSerializer.Serialize(settingsToSave, IndentedJsonOptions);
+                File.WriteAllText(targetFile, json);
             }
             catch (Exception ex)
             {
-                HandledErrorReporter.Warning(ex, "ShellViewModel.SaveBitmapImportSettings", new { BitmapImportSettingsFile });
+                HandledErrorReporter.Warning(ex, "ShellViewModel.SaveBitmapImportSettings", new { BitmapImportSettingsFile = targetFile });
             }
         }
 
