@@ -73,4 +73,43 @@ public class HandledErrorReporterTests : IDisposable
         Assert.Null(record1);
         Assert.Null(record2);
     }
+
+    [Fact]
+    public void Error_WithNullException_DoesNotThrowNullReferenceException()
+    {
+        var ex = Record.Exception(() => HandledErrorReporter.Error(null!, "TestNullOp"));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void Warning_WithNullException_DoesNotThrowNullReferenceException()
+    {
+        var ex = Record.Exception(() => HandledErrorReporter.Warning(null!, "TestNullWarnOp"));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public void ThrottleCache_PrunesExpiredEntries_WhenCacheGrows()
+    {
+        HandledErrorReporter.ThrottleWindow = TimeSpan.FromMilliseconds(10);
+
+        // Add 600 entries with distinct operations
+        for (int i = 0; i < 600; i++)
+        {
+            HandledErrorReporter.Error(new InvalidOperationException(), $"Op_{i}");
+        }
+
+        // Wait for entries to expire
+        Thread.Sleep(30);
+
+        // Add more entries to trigger cleanup
+        for (int i = 600; i < 1100; i++)
+        {
+            HandledErrorReporter.Error(new InvalidOperationException(), $"Op_{i}");
+        }
+
+        // The expired entries should have been pruned; count must not be 1100
+        int count = HandledErrorReporter.GetThrottleCacheCount();
+        Assert.True(count < 1100, $"Expected cache count < 1100 after pruning, but was {count}");
+    }
 }

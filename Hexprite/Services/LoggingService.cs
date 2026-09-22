@@ -264,6 +264,11 @@ namespace Hexprite.Services
         /// </summary>
         public static void AttachRecentLogFilesToScope(Scope scope)
         {
+            AttachRecentLogFilesToScope(scope, GetLogDirectory());
+        }
+
+        internal static void AttachRecentLogFilesToScope(Scope scope, string logDirectory)
+        {
             try
             {
                 PrivacyOptions privacy = GetPrivacyOptions();
@@ -273,14 +278,13 @@ namespace Hexprite.Services
                     return;
                 }
 
-                string logDirectory = GetLogDirectory();
                 if (!Directory.Exists(logDirectory))
                 {
                     return;
                 }
 
                 int maxFiles = GetBugReportingMaxAttachedLogs();
-                string[] latestFiles = [.. Directory.EnumerateFiles(logDirectory, "*.txt")
+                string[] latestFiles = [.. Directory.EnumerateFiles(logDirectory, "log-*.txt")
                     .OrderByDescending(File.GetLastWriteTimeUtc)
                     .Take(maxFiles)];
 
@@ -308,7 +312,8 @@ namespace Hexprite.Services
                             reader.ReadLine();
                         }
 
-                        var lines = new List<string>();
+                        var lines = new Queue<string>(MaxAttachedLogLines + 1);
+                        bool linesTruncated = false;
                         string? line;
                         while ((line = reader.ReadLine()) != null)
                         {
@@ -316,15 +321,16 @@ namespace Hexprite.Services
                             {
                                 line = SanitizeForTelemetry(line, privacy, allowEmail: false);
                             }
-                            lines.Add(line);
-                            if (lines.Count > MaxAttachedLogLines)
+                            if (lines.Count >= MaxAttachedLogLines)
                             {
-                                lines.RemoveAt(0);
+                                lines.Dequeue();
+                                linesTruncated = true;
                             }
+                            lines.Enqueue(line);
                         }
 
                         var sb = new StringBuilder();
-                        if (wasTruncated)
+                        if (wasTruncated || linesTruncated)
                         {
                             sb.AppendLine("[... Earlier log entries omitted for size ...]");
                         }
@@ -348,7 +354,7 @@ namespace Hexprite.Services
             }
         }
 
-        private static void SanitizeSentryEvent(SentryEvent sentryEvent, PrivacyOptions privacy)
+        internal static void SanitizeSentryEvent(SentryEvent sentryEvent, PrivacyOptions privacy)
         {
             if (sentryEvent.Message?.Message is not null)
             {
@@ -358,6 +364,34 @@ namespace Hexprite.Services
             if (!string.IsNullOrWhiteSpace(sentryEvent.ServerName))
             {
                 sentryEvent.ServerName = null;
+            }
+
+            bool hasExceptions = false;
+            if (sentryEvent.SentryExceptions != null)
+            {
+                foreach (var sentryEx in sentryEvent.SentryExceptions)
+                {
+                    hasExceptions = true;
+                    if (sentryEx.Value != null)
+                    {
+                        sentryEx.Value = SanitizeForTelemetry(sentryEx.Value, privacy, allowEmail: false);
+                    }
+                }
+            }
+
+            if (!hasExceptions && sentryEvent.Exception != null)
+            {
+                var exceptions = new List<Sentry.Protocol.SentryException>();
+                for (Exception? current = sentryEvent.Exception; current != null; current = current.InnerException)
+                {
+                    exceptions.Add(new Sentry.Protocol.SentryException
+                    {
+                        Type = current.GetType().FullName,
+                        Value = SanitizeForTelemetry(current.Message, privacy, allowEmail: false),
+                        Module = current.GetType().Assembly.GetName().Name
+                    });
+                }
+                sentryEvent.SentryExceptions = exceptions;
             }
 
             if (sentryEvent.Extra.Count > 0)
@@ -604,11 +638,34 @@ namespace Hexprite.Services
         {
             if (string.IsNullOrEmpty(input)) return input;
 
-            // Redact IPv4 addresses
+            // Redact IPv4 addresses, avoiding false positives on software version numbers
+            // e.g. "Version=1.0.0.0", "v1.2.3.4", "AssemblyVersion("1.0.0.0")", ", Culture="
             string text = Regex.Replace(
                 input,
                 @"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
-                "[redacted-ip]",
+                match =>
+                {
+                    int start = match.Index;
+                    int length = match.Length;
+
+                    // Look behind for version indicators
+                    int prefixStart = Math.Max(0, start - 25);
+                    string prefix = input.Substring(prefixStart, start - prefixStart);
+                    if (Regex.IsMatch(prefix, @"(?i)(?:version\s*[:=]?\s*|ver\s*[:=]?\s*|v$|assemblyversion\s*\(\s*[""]?$|\bnet\d+\.\d+\b)", RegexOptions.None, RegexTimeout))
+                    {
+                        return match.Value;
+                    }
+
+                    // Look ahead for assembly metadata
+                    int suffixLength = Math.Min(30, input.Length - (start + length));
+                    string suffix = input.Substring(start + length, suffixLength);
+                    if (Regex.IsMatch(suffix, @"(?i)^\s*,\s*(?:Culture|PublicKeyToken|ProcessorArchitecture)=", RegexOptions.None, RegexTimeout))
+                    {
+                        return match.Value;
+                    }
+
+                    return "[redacted-ip]";
+                },
                 RegexOptions.None,
                 RegexTimeout);
 

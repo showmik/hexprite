@@ -216,14 +216,36 @@ namespace Hexprite
                 sp.GetRequiredService<IHexpriteShortcutManager>()));
         }
 
-        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        private static int _crashHandlingStarted;
+
+        internal static void ResetCrashHandlingForTesting()
         {
-            // Serilog Sentry sink forwards Fatal + exception to Sentry when configured.
-            Log.Fatal(e.Exception, "Unhandled UI thread exception. IsTerminating=true");
+            Interlocked.Exchange(ref _crashHandlingStarted, 0);
+        }
+
+        internal static bool HandleCrash(
+            Exception? ex,
+            string source,
+            bool isTerminating,
+            IServiceProvider? serviceProvider = null,
+            Action<string, string, MessageBoxImage>? dialogShower = null)
+        {
+            if (Interlocked.CompareExchange(ref _crashHandlingStarted, 1, 0) != 0)
+            {
+                return false;
+            }
+
+            ex ??= new InvalidOperationException($"Fatal crash from {source} with null exception.");
+            Log.Fatal(ex, "Fatal crash encountered from {CrashSource}. IsTerminating={IsTerminating}", source, isTerminating);
             SentryCrashFlush.TryFlushPendingEvents();
 
-            CreateEmergencyBackups(e.Exception);
+            CreateEmergencyBackups(ex, serviceProvider, dialogShower);
+            return true;
+        }
 
+        private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            HandleCrash(e.Exception, "UI Thread", isTerminating: true, _serviceProvider);
             // Keep false so unrecoverable crashes terminate cleanly.
             e.Handled = false;
         }
@@ -232,13 +254,14 @@ namespace Hexprite
         {
             if (e.ExceptionObject is Exception ex)
             {
-                Log.Fatal(ex, "Unhandled non-UI exception. IsTerminating={IsTerminating}", e.IsTerminating);
                 if (e.IsTerminating)
                 {
-                    SentryCrashFlush.TryFlushPendingEvents();
-                    CreateEmergencyBackups(ex);
+                    HandleCrash(ex, "AppDomain", isTerminating: true, _serviceProvider);
                 }
-
+                else
+                {
+                    Log.Fatal(ex, "Unhandled non-terminating AppDomain exception.");
+                }
                 return;
             }
 
@@ -248,8 +271,7 @@ namespace Hexprite
                 e.ExceptionObject?.GetType().FullName ?? "null");
             if (e.IsTerminating)
             {
-                SentryCrashFlush.TryFlushPendingEvents();
-                CreateEmergencyBackups(new InvalidOperationException("Unknown non-CLS exception."));
+                HandleCrash(new InvalidOperationException("Unknown non-CLS exception."), "AppDomain Non-CLS", isTerminating: true, _serviceProvider);
             }
         }
 
@@ -259,14 +281,100 @@ namespace Hexprite
             e.SetObserved();
         }
 
-        private void CreateEmergencyBackups(Exception ex)
+        private static void ShowCrashDialog(string message, string title, MessageBoxImage image)
         {
             try
             {
-                var shell = _serviceProvider?.GetService<ShellViewModel>();
-                if (shell == null || shell.OpenDocuments.Count == 0) 
+                if (Current?.Dispatcher != null && Current.Dispatcher.CheckAccess())
                 {
-                    ShowFallbackCrashDialog(ex);
+                    Hexprite.Views.MessageDialog.Show(message, title, MessageBoxButton.OK, image);
+                    return;
+                }
+
+                if (Current?.Dispatcher != null && !Current.Dispatcher.HasShutdownStarted)
+                {
+                    var task = Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        Hexprite.Views.MessageDialog.Show(message, title, MessageBoxButton.OK, image);
+                    });
+                    if (task.Task.Wait(TimeSpan.FromSeconds(2)))
+                    {
+                        return;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback to Win32 MessageBox below
+            }
+
+            try
+            {
+                System.Windows.MessageBox.Show(message, title, MessageBoxButton.OK, image);
+            }
+            catch
+            {
+                // Ignore if headless or no desktop session
+            }
+        }
+
+        private static void CreateEmergencyBackups(
+            Exception ex,
+            IServiceProvider? serviceProvider = null,
+            Action<string, string, MessageBoxImage>? dialogShower = null)
+        {
+            dialogShower ??= ShowCrashDialog;
+            try
+            {
+                var sp = serviceProvider ?? (Current as App)?._serviceProvider;
+                var shell = sp?.GetService<ShellViewModel>();
+                if (shell == null)
+                {
+                    dialogShower(
+                        $"Hexprite has encountered a fatal error and must close.\n\nError: {ex.Message}",
+                        "Hexprite - Fatal Error",
+                        MessageBoxImage.Error);
+                    return;
+                }
+
+                List<(IDocumentTab Doc, string Title, DocumentMode Mode)> docsToBackup = [];
+                if (Current?.Dispatcher != null && !Current.Dispatcher.CheckAccess())
+                {
+                    try
+                    {
+                        Current.Dispatcher.Invoke(() =>
+                        {
+                            foreach (var doc in shell.OpenDocuments)
+                            {
+                                if (doc.HasUnsavedChanges)
+                                {
+                                    docsToBackup.Add((doc, doc.Title, doc.Mode));
+                                }
+                            }
+                        }, System.Windows.Threading.DispatcherPriority.Send, CancellationToken.None, TimeSpan.FromSeconds(2));
+                    }
+                    catch (Exception exDispatcher)
+                    {
+                        Log.Warning(exDispatcher, "Could not access UI dispatcher to collect open documents during crash.");
+                    }
+                }
+                else
+                {
+                    foreach (var doc in shell.OpenDocuments)
+                    {
+                        if (doc.HasUnsavedChanges)
+                        {
+                            docsToBackup.Add((doc, doc.Title, doc.Mode));
+                        }
+                    }
+                }
+
+                if (docsToBackup.Count == 0)
+                {
+                    dialogShower(
+                        $"Hexprite has encountered a fatal error and must close.\n\nError: {ex.Message}",
+                        "Hexprite - Fatal Error",
+                        MessageBoxImage.Error);
                     return;
                 }
 
@@ -277,78 +385,79 @@ namespace Hexprite
                     DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
 
                 bool savedAny = false;
-                foreach (var doc in shell.OpenDocuments)
+                foreach (var (doc, title, mode) in docsToBackup)
                 {
-                    if (doc.HasUnsavedChanges)
+                    if (!savedAny)
                     {
-                        if (!savedAny) 
-                        {
-                            System.IO.Directory.CreateDirectory(backupDir);
-                        }
+                        System.IO.Directory.CreateDirectory(backupDir);
+                    }
 
-                        string baseName = string.IsNullOrWhiteSpace(doc.Title) ? "Untitled" : doc.Title;
-                        if (baseName.EndsWith('*'))
+                    string baseName = string.IsNullOrWhiteSpace(title) ? "Untitled" : title;
+                    if (baseName.EndsWith('*'))
+                    {
+                        baseName = baseName[..^1];
+                    }
+                    foreach (char c in System.IO.Path.GetInvalidFileNameChars())
+                    {
+                        baseName = baseName.Replace(c, '_');
+                    }
+
+                    string ext = mode switch
+                    {
+                        Core.DocumentMode.Font => ".hexfont",
+                        Core.DocumentMode.AssetPack => ".hexpack",
+                        _ => ".hexp",
+                    };
+                    string fullPath = System.IO.Path.Combine(backupDir, baseName + ext);
+
+                    try
+                    {
+                        doc.SaveAs(fullPath);
+                        if (System.IO.File.Exists(fullPath))
                         {
-                            baseName = baseName[..^1];
-                        }
-                        foreach (char c in System.IO.Path.GetInvalidFileNameChars())
-                        {
-                            baseName = baseName.Replace(c, '_');
-                        }
-                        
-                        string ext = doc.Mode switch
-                        {
-                            Core.DocumentMode.Font => ".hexfont",
-                            Core.DocumentMode.AssetPack => ".hexpack",
-                            _ => ".hexp",
-                        };
-                        string fullPath = System.IO.Path.Combine(backupDir, baseName + ext);
-                        
-                        try
-                        {
-                            doc.SaveAs(fullPath);
                             savedAny = true;
                         }
-                        catch { }
+                    }
+                    catch (Exception saveEx)
+                    {
+                        Log.Warning(saveEx, "Failed to save emergency backup for {DocTitle}", title);
                     }
                 }
 
                 if (savedAny)
                 {
-                    Hexprite.Views.MessageDialog.Show(
+                    dialogShower(
                         $"Hexprite has encountered a fatal error and must close.\n\n" +
                         $"Emergency backups of your unsaved work have been saved to:\n{backupDir}\n\n" +
                         $"Error: {ex.Message}",
                         "Hexprite - Fatal Error",
-                        MessageBoxButton.OK,
                         MessageBoxImage.Error);
                 }
                 else
                 {
-                    ShowFallbackCrashDialog(ex);
+                    dialogShower(
+                        $"Hexprite has encountered a fatal error and must close.\n\nError: {ex.Message}",
+                        "Hexprite - Fatal Error",
+                        MessageBoxImage.Error);
                 }
             }
             catch (Exception backupEx)
             {
                 Log.Fatal(backupEx, "Failed to create emergency backups during crash.");
-                Hexprite.Views.MessageDialog.Show(
-                    $"An unexpected error occurred and the application must close.\n\n" +
-                    $"We attempted to save an emergency backup but failed: {backupEx.Message}\n\n" +
-                    $"Original Error: {ex.Message}",
-                    "Hexprite - Fatal Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                try
+                {
+                    dialogShower(
+                        $"An unexpected error occurred and the application must close.\n\n" +
+                        $"We attempted to save an emergency backup but failed: {backupEx.Message}\n\n" +
+                        $"Original Error: {ex.Message}",
+                        "Hexprite - Fatal Error",
+                        MessageBoxImage.Error);
+                }
+                catch
+                {
+                    // Do not throw from unhandled exception crash dialog
+                }
             }
-        }
-
-        private static void ShowFallbackCrashDialog(Exception ex)
-        {
-            Hexprite.Views.MessageDialog.Show(
-                $"Hexprite has encountered a fatal error and must close.\n\n" +
-                $"Error: {ex.Message}",
-                "Hexprite - Fatal Error",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
         }
     }
 }

@@ -152,6 +152,8 @@ namespace Hexprite.ViewModels
 
         public DocumentMode Mode => DocumentMode.Sprite;
 
+        private static readonly System.Text.Json.JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
         public void Save()
         {
             // ShellViewModel calls SaveCommand which calls SaveFile
@@ -159,7 +161,25 @@ namespace Hexprite.ViewModels
 
         public void SaveAs(string path)
         {
-            // Handled by Shell
+            path = SafeFileIo.EnsureExtension(path, ".hexp");
+            SuspendLinkedFileWatcher();
+            try
+            {
+                SpriteState.NormalizeLayerState();
+                SpriteState.ExportSettings = ExportSettings;
+                string json = System.Text.Json.JsonSerializer.Serialize(SpriteState, IndentedJsonOptions);
+                SafeFileIo.WriteAllTextAtomic(path, json, maxRetries: 5, createBackup: true);
+                FilePath = path;
+                MarkAsClean();
+                ClearAutosave();
+                UpdateLinkedFileHashIfMatches(path);
+                UpdateSpriteNameFromFile();
+                UserPreferencesService.AddRecentFile(path);
+            }
+            finally
+            {
+                ResumeLinkedFileWatcher();
+            }
         }
 
         public bool HasUnsavedChanges => IsDirty;

@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using Hexprite.Services;
+using Sentry;
 using Xunit;
 
 namespace Hexprite.Tests
@@ -281,6 +283,109 @@ namespace Hexprite.Tests
         {
             int maxLogs = LoggingService.GetBugReportingMaxAttachedLogs();
             Assert.InRange(maxLogs, 1, 10);
+        }
+
+        [Theory]
+        [InlineData("Loaded assembly System.Text.Json, Version=8.0.0.0, Culture=neutral", "Loaded assembly System.Text.Json, Version=8.0.0.0, Culture=neutral")]
+        [InlineData("Hexprite v1.2.3.4 started", "Hexprite v1.2.3.4 started")]
+        [InlineData("AssemblyVersion(\"1.0.0.0\")", "AssemblyVersion(\"1.0.0.0\")")]
+        public void SanitizeForTelemetry_DoesNotRedact_AssemblyVersionNumbers(string input, string expected)
+        {
+            var options = new LoggingService.PrivacyOptions(
+                telemetryEnabled: true,
+                attachLogsByDefault: false,
+                allowLogAttachments: true,
+                redactPersonalData: true,
+                shareContactEmailByDefault: false,
+                allowContactEmailInTelemetry: true);
+
+            string result = LoggingService.SanitizeForTelemetry(input, options, allowEmail: false);
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void SanitizeSentryEvent_RedactsSensitiveDataInSentryExceptions()
+        {
+            var options = new LoggingService.PrivacyOptions(
+                telemetryEnabled: true,
+                attachLogsByDefault: false,
+                allowLogAttachments: true,
+                redactPersonalData: true,
+                shareContactEmailByDefault: false,
+                allowContactEmailInTelemetry: true);
+
+            var ex = new InvalidOperationException(@"Failed to open C:\Users\SecretUser\secret.hexp with token ghp_1234567890abcdefghijklmnopqrstuvwxyz");
+            var sentryEvent = new SentryEvent(ex);
+
+            LoggingService.SanitizeSentryEvent(sentryEvent, options);
+
+            Assert.NotNull(sentryEvent.SentryExceptions);
+            var sentryEx = sentryEvent.SentryExceptions.FirstOrDefault();
+            Assert.NotNull(sentryEx);
+            Assert.DoesNotContain("SecretUser", sentryEx.Value);
+            Assert.DoesNotContain("ghp_1234567890abcdefghijklmnopqrstuvwxyz", sentryEx.Value);
+            Assert.Contains("[redacted-path]", sentryEx.Value);
+            Assert.Contains("[redacted-token]", sentryEx.Value);
+        }
+
+        [Fact]
+        public void AttachRecentLogFilesToScope_OnlyAttachesLogFiles_IgnoringSelfLogAndOtherTxt()
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "HexpriteLogTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                File.WriteAllText(Path.Combine(tempDir, "log-20260922.txt"), "2026-09-22 App started");
+                File.WriteAllText(Path.Combine(tempDir, "serilog-selflog.txt"), "2026-09-22 Self log event");
+                File.WriteAllText(Path.Combine(tempDir, "other.txt"), "2026-09-22 Random text");
+
+                var scope = new Scope(new SentryOptions());
+                LoggingService.AttachRecentLogFilesToScope(scope, tempDir);
+
+                var attachments = scope.Attachments.ToList();
+                Assert.Single(attachments);
+                Assert.Equal("log-20260922.txt", attachments[0].FileName);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
+        }
+
+        [Fact]
+        public void AttachRecentLogFilesToScope_IncludesTruncationMarker_WhenLinesExceedLimit()
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), "HexpriteLogTest_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            try
+            {
+                // Create a file with 2500 short lines (< 512 KB, but > 2000 lines)
+                var lines = Enumerable.Range(1, 2500).Select(i => $"Log entry {i}").ToList();
+                File.WriteAllLines(Path.Combine(tempDir, "log-20260922.txt"), lines);
+
+                var scope = new Scope(new SentryOptions());
+                LoggingService.AttachRecentLogFilesToScope(scope, tempDir);
+
+                var attachments = scope.Attachments.ToList();
+                Assert.Single(attachments);
+                using var stream = attachments[0].Content.GetStream();
+                using var reader = new StreamReader(stream);
+                string content = reader.ReadToEnd();
+
+                Assert.StartsWith("[... Earlier log entries omitted for size ...]", content.TrimStart());
+                Assert.DoesNotContain("Log entry 1\n", content);
+                Assert.Contains("Log entry 2500", content);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                {
+                    Directory.Delete(tempDir, true);
+                }
+            }
         }
     }
 }

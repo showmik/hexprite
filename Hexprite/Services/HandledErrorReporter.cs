@@ -38,6 +38,14 @@ namespace Hexprite.Services
             }
         }
 
+        internal static int GetThrottleCacheCount()
+        {
+            lock (Sync)
+            {
+                return ThrottleCache.Count;
+            }
+        }
+
         public static void Error(
             Exception ex,
             string operation,
@@ -94,10 +102,13 @@ namespace Hexprite.Services
             }
         }
 
-        private static bool ShouldThrottle(string operation, string? caller, Exception ex, out int suppressedCount)
+        private const int MaxCacheEntries = 1000;
+
+        private static bool ShouldThrottle(string operation, string? caller, Exception? ex, out int suppressedCount)
         {
             suppressedCount = 0;
-            string key = $"{operation}|{caller}|{ex.GetType().FullName}";
+            string exTypeName = ex?.GetType().FullName ?? "UnknownException";
+            string key = $"{operation}|{caller}|{exTypeName}";
             DateTime now = DateTime.UtcNow;
 
             lock (Sync)
@@ -116,12 +127,38 @@ namespace Hexprite.Services
                     return false;
                 }
 
+                if (ThrottleCache.Count >= MaxCacheEntries)
+                {
+                    PruneExpiredEntries(now);
+                }
+
                 ThrottleCache[key] = new ThrottleEntry
                 {
                     LastLoggedUtc = now,
                     SuppressedCount = 0
                 };
                 return false;
+            }
+        }
+
+        private static void PruneExpiredEntries(DateTime now)
+        {
+            List<string>? expiredKeys = null;
+            foreach (var (k, v) in ThrottleCache)
+            {
+                if (now - v.LastLoggedUtc >= ThrottleWindow)
+                {
+                    expiredKeys ??= [];
+                    expiredKeys.Add(k);
+                }
+            }
+
+            if (expiredKeys != null)
+            {
+                foreach (string k in expiredKeys)
+                {
+                    ThrottleCache.Remove(k);
+                }
             }
         }
     }
