@@ -2053,7 +2053,6 @@ namespace Hexprite.ViewModels
                 {
                     OnPropertyChanged(nameof(HardwarePreviewStatusText));
                     OnPropertyChanged(nameof(HardwarePreviewStatusBrush));
-                    OnPropertyChanged(nameof(IsHardwarePreviewStatusVisible));
                     OnPropertyChanged(nameof(HardwarePreviewConnectionButtonText));
                     OnPropertyChanged(nameof(IsHardwarePreviewError));
                     OnPropertyChanged(nameof(TroubleshootingGuide));

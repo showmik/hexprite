@@ -207,8 +207,6 @@ namespace Hexprite.ViewModels
             _ => Brushes.Gray,
         };
 
-        public bool IsHardwarePreviewStatusVisible => true;
-
         public bool IsHardwarePreviewError => _hardwarePreview.ConnectionState == HardwarePreviewConnectionState.Error;
 
         private bool _isTroubleshootingVisible;
