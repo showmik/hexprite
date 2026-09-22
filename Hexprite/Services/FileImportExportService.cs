@@ -260,6 +260,9 @@ namespace Hexprite.Services
 
         public string UpdateSpriteInFile(string filePath, string variableName, string newCodeSnippet, int? newWidth = null, int? newHeight = null, int? newFrameCount = null)
         {
+            if (string.IsNullOrWhiteSpace(variableName))
+                throw new ArgumentException("Variable name cannot be null or whitespace.", nameof(variableName));
+
             var fileLock = GetFileLock(filePath);
             fileLock.Wait();
             try
@@ -299,9 +302,47 @@ namespace Hexprite.Services
                     }
                     else
                     {
-                        string newBody = PreserveRowComments(match.Groups[2].Value, newCodeSnippet, lineEnding);
-                        string adaptedSnippet = originalSignature + variableName + (newBody.StartsWith('[') || newBody.StartsWith(' ') ? newBody : (" " + newBody));
-                        text = string.Concat(text.AsSpan()[..match.Index], adaptedSnippet, text.AsSpan(match.Index + match.Length));
+                        // Check if newCodeSnippet is a C array declaration with a different/suffixed variable name (e.g. cursor_bits)
+                        var genericCArrayRegex = new Regex(
+                            @"((?:(?:alignas\s*\([^)]*\)|__attribute__\s*\(\([^)]*\)\)|[a-zA-Z_:][a-zA-Z0-9_:]*|\*)\s+)+)" +
+                            @"[a-zA-Z_][a-zA-Z0-9_]*" +
+                            @"(\s*(?:\[[^\]]*\])+\s*(?:[a-zA-Z_][a-zA-Z0-9_]*\s*)*=\s*\{(?:[^{}]|\{(?:[^{}]|\{[^}]*\})*\})*\}\s*;?)",
+                            RegexOptions.Singleline, TimeSpan.FromSeconds(2));
+                        var genericMatch = genericCArrayRegex.Match(newCodeSnippet);
+
+                        if (genericMatch.Success)
+                        {
+                            string newBody = PreserveRowComments(match.Groups[2].Value, genericMatch.Groups[2].Value, lineEnding);
+                            string adaptedSnippet = originalSignature + variableName + newBody;
+                            if (!adaptedSnippet.TrimEnd().EndsWith(';')) adaptedSnippet += ";";
+                            text = string.Concat(text.AsSpan()[..match.Index], adaptedSnippet, text.AsSpan(match.Index + match.Length));
+                        }
+                        else
+                        {
+                            // Snippet is not a full declaration (e.g. only braces "{ ... }" or array body "[16] = { ... }")
+                            string trimmedSnippet = newCodeSnippet.TrimStart();
+                            string prefix;
+                            int openBraceIndex = match.Groups[2].Value.IndexOf('{');
+                            if (trimmedSnippet.StartsWith('{') && openBraceIndex >= 0)
+                            {
+                                // Preserve original array declarator and assignment (e.g. "[] = ")
+                                prefix = match.Groups[2].Value[..openBraceIndex];
+                            }
+                            else if (trimmedSnippet.StartsWith('='))
+                            {
+                                int eqIndex = match.Groups[2].Value.IndexOf('=');
+                                prefix = eqIndex >= 0 ? match.Groups[2].Value[..eqIndex] : " ";
+                            }
+                            else
+                            {
+                                prefix = trimmedSnippet.StartsWith('[') || trimmedSnippet.StartsWith(' ') ? "" : " ";
+                            }
+
+                            string newBody = PreserveRowComments(match.Groups[2].Value, newCodeSnippet, lineEnding);
+                            string adaptedSnippet = originalSignature + variableName + prefix + newBody;
+                            if (!adaptedSnippet.TrimEnd().EndsWith(';')) adaptedSnippet += ";";
+                            text = string.Concat(text.AsSpan()[..match.Index], adaptedSnippet, text.AsSpan(match.Index + match.Length));
+                        }
                     }
                     replaced = true;
                 }

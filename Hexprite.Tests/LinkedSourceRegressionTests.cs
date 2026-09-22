@@ -491,4 +491,53 @@ public sealed class LinkedSourceRegressionTests : IDisposable
         Assert.True(docB.SpriteState.Pixels[0], "Tab B must pull external changes for shared.c");
         Assert.False(docC.SpriteState.Pixels[0], "Tab C (linked to other.c) must remain unaffected");
     }
+
+    [Fact]
+    public async Task ExecuteRestoreLinkedSourceAsync_WhenMultipleDocumentsLinkedToSameFile_FiresGlobalPullAndSyncsOtherDocuments()
+    {
+        _shell.OpenDocuments.Clear();
+        string initialContent = """
+            #define SPR1_WIDTH 16
+            #define SPR1_HEIGHT 16
+            const uint8_t spr1[] = { 0x80, 0x00 };
+            """;
+        string path = WriteTempFile("restore_shared.c", initialContent);
+
+        // Tab A linked to restore_shared.c
+        _shell.NewDocumentCommand.Execute("16x16");
+        var docA = (MainViewModel)_shell.ActiveDocument!;
+        docA.SpriteState.LinkedSourceFile = path;
+        docA.SpriteState.LinkedVariableName = "spr1";
+        docA.SpriteState.LinkedFormat = ExportFormat.AdafruitGfx;
+        docA.NotifyLinkChanged();
+
+        // Tab B also linked to restore_shared.c
+        _shell.NewDocumentCommand.Execute("16x16");
+        var docB = (MainViewModel)_shell.ActiveDocument!;
+        docB.SpriteState.LinkedSourceFile = path;
+        docB.SpriteState.LinkedVariableName = "spr1";
+        docB.SpriteState.LinkedFormat = ExportFormat.AdafruitGfx;
+        docB.NotifyLinkChanged();
+
+        // Doc A modifies sprite and updates, creating backup with initialContent (pixel 0 = true)
+        docA.SpriteState.Pixels[0] = false;
+        await docA.ExecuteUpdateLinkedSourceAsync();
+
+        // Ensure docB has pixel 0 = false currently
+        docB.SpriteState.Pixels[0] = false;
+
+        // Doc A restores from backup (initialContent had pixel 0 = true)
+        await docA.ExecuteRestoreLinkedSourceAsync(skipConfirmation: true);
+
+        // Wait for async GlobalPullRequested handler to update docB
+        for (int i = 0; i < 50 && !docB.SpriteState.Pixels[0]; i++)
+        {
+            await Task.Delay(20);
+            FlushDispatcher();
+        }
+
+        Assert.True(docA.SpriteState.Pixels[0], "Doc A should be restored to initial state (pixel 0 = true)");
+        Assert.True(docB.SpriteState.Pixels[0], "Doc B should be automatically synced via GlobalPullRequested when Doc A restores");
+    }
 }
+

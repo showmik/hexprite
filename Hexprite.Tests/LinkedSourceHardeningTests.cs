@@ -859,4 +859,133 @@ public sealed class LinkedSourceHardeningTests : IDisposable
 
         Assert.True(_vm.LinkedFileChangedExternally, "Data byte modification must trigger external change warning");
     }
+
+    // ── 15. State & ViewModel Validation (BUG-LS-01, BUG-LS-02, BUG-LS-03) ──
+
+    [Fact]
+    public void SpriteState_IsLinked_RequiresBothFileAndVariableName()
+    {
+        var state = new SpriteState(16, 16);
+        Assert.False(state.IsLinked);
+
+        state.LinkedSourceFile = "test.c";
+        Assert.False(state.IsLinked, "IsLinked must be false when LinkedVariableName is null or empty");
+
+        state.LinkedVariableName = "";
+        Assert.False(state.IsLinked, "IsLinked must be false when LinkedVariableName is empty");
+
+        state.LinkedVariableName = "   ";
+        Assert.False(state.IsLinked, "IsLinked must be false when LinkedVariableName is whitespace");
+
+        state.LinkedVariableName = "my_sprite";
+        Assert.True(state.IsLinked, "IsLinked must be true when both file and variable are set");
+
+        state.LinkedSourceFile = "   ";
+        Assert.False(state.IsLinked, "IsLinked must be false when LinkedSourceFile is whitespace");
+    }
+
+    [Fact]
+    public async Task ExecutePullLinkedSourceAsync_WhenNotLinkedOrStateNull_ReturnsSafelyWithoutException()
+    {
+        _vm.SpriteState.LinkedSourceFile = null;
+        _vm.SpriteState.LinkedVariableName = null;
+        _vm.SpriteState.LinkedFormat = null;
+
+        var exception = await Record.ExceptionAsync(async () => await _vm.ExecutePullLinkedSourceAsync());
+        Assert.Null(exception);
+
+        _vm.SpriteState.LinkedSourceFile = "test.c";
+        _vm.SpriteState.LinkedVariableName = null;
+
+        exception = await Record.ExceptionAsync(async () => await _vm.ExecutePullLinkedSourceAsync());
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task ExecutePullLinkedSourceAsync_WhenLinkedFormatIsNull_MatchesByNameAndPullsSuccessfully()
+    {
+        string path = WriteTempFile("null_format_pull.c", """
+            #define SPR_TEST_WIDTH 16
+            #define SPR_TEST_HEIGHT 16
+            const uint8_t spr_test[] = { 0x80, 0x00 };
+            """);
+
+        _importExportMock.Setup(m => m.ExtractSpritesFromFile(It.IsAny<string>()))
+            .Returns<string>(p => _fileSvc.ExtractSpritesFromFile(p));
+        _codeGenMock.Setup(c => c.ParseAdafruitGfxToState(It.IsAny<string>(), It.IsAny<SpriteState>()))
+            .Callback<string, SpriteState>((snippet, state) => new CodeGeneratorService().ParseAdafruitGfxToState(snippet, state));
+
+        _vm.SpriteState.LinkedSourceFile = path;
+        _vm.SpriteState.LinkedVariableName = "spr_test";
+        _vm.SpriteState.LinkedFormat = null;
+        _vm.NotifyLinkChanged();
+
+        var exception = await Record.ExceptionAsync(async () => await _vm.ExecutePullLinkedSourceAsync());
+        Assert.Null(exception);
+        Assert.True(_vm.SpriteState.Pixels[0], "Pull should successfully match by variable name when LinkedFormat is null");
+    }
+
+    [Fact]
+    public async Task ExecuteRestoreLinkedSourceAsync_WhenLinkedFormatIsNull_MatchesByNameAndRestoresSuccessfully()
+    {
+        string path = WriteTempFile("null_format_restore.c", """
+            #define SPR_RESTORE_WIDTH 16
+            #define SPR_RESTORE_HEIGHT 16
+            const uint8_t spr_restore[] = { 0x80, 0x00 };
+            """);
+
+        _importExportMock.Setup(m => m.ExtractSpritesFromFile(It.IsAny<string>()))
+            .Returns<string>(p => _fileSvc.ExtractSpritesFromFile(p));
+        _importExportMock.Setup(m => m.RestoreSpriteInFile(It.IsAny<string>()))
+            .Returns<string>(p => _fileSvc.RestoreSpriteInFile(p));
+        _importExportMock.Setup(m => m.HasBackup(It.IsAny<string>()))
+            .Returns<string>(p => _fileSvc.HasBackup(p));
+        _importExportMock.Setup(m => m.UpdateSpriteInFile(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>(), It.IsAny<int?>()))
+            .Returns<string, string, string, int?, int?, int?>((p, v, c, w, h, f) => _fileSvc.UpdateSpriteInFile(p, v, c, w, h, f));
+        _codeGenMock.Setup(c => c.ParseAdafruitGfxToState(It.IsAny<string>(), It.IsAny<SpriteState>()))
+            .Callback<string, SpriteState>((snippet, state) => new CodeGeneratorService().ParseAdafruitGfxToState(snippet, state));
+
+        _vm.SpriteState.LinkedSourceFile = path;
+        _vm.SpriteState.LinkedVariableName = "spr_restore";
+        _vm.SpriteState.LinkedFormat = null;
+        _vm.NotifyLinkChanged();
+
+        // Create backup by updating first
+        _vm.SpriteState.Pixels[0] = false;
+        await _vm.ExecuteUpdateLinkedSourceAsync();
+
+        // Modify file on disk to simulate corrupted state
+        File.WriteAllText(path, """
+            #define SPR_RESTORE_WIDTH 16
+            #define SPR_RESTORE_HEIGHT 16
+            const uint8_t spr_restore[] = { 0x00, 0x00 };
+            """);
+
+        // Restore
+        var exception = await Record.ExceptionAsync(async () => await _vm.ExecuteRestoreLinkedSourceAsync(skipConfirmation: true));
+        Assert.Null(exception);
+        Assert.True(_vm.SpriteState.Pixels[0], "Restore should successfully match by variable name when LinkedFormat is null");
+    }
+
+    [Fact]
+    public void CheckForExternalChanges_WhenFileLocked_DoesNotBlockUIThread()
+    {
+        string path = WriteTempFile("locked_file.c", "const uint8_t spr[] = { 0xAA };");
+        _vm.SpriteState.LinkedSourceFile = path;
+        _vm.SpriteState.LinkedVariableName = "spr";
+        _vm.SpriteState.LinkedFormat = ExportFormat.AdafruitGfx;
+        _vm.NotifyLinkChanged();
+
+        // Lock file exclusively to simulate an external process writing or holding the file
+        using var lockStream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        _vm.CheckForExternalChanges();
+        sw.Stop();
+
+        // Should return promptly without blocking UI thread through multi-attempt sleeping
+        Assert.True(sw.ElapsedMilliseconds < 500, $"CheckForExternalChanges blocked UI thread for {sw.ElapsedMilliseconds}ms");
+    }
 }
+
+

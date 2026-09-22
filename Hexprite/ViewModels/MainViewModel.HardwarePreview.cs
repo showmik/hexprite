@@ -1049,15 +1049,6 @@ namespace Hexprite.ViewModels
                             }
                         }
                     }, CancellationToken.None);
-                    
-                    lock (_linkedFileLock)
-                    {
-                        if (!string.IsNullOrEmpty(newHash))
-                        {
-                            _globalLastSavedHashes[SpriteState.LinkedSourceFile] = newHash;
-                            _documentSyncedHash = newHash;
-                        }
-                    }
                 }
                 finally
                 {
@@ -1065,9 +1056,13 @@ namespace Hexprite.ViewModels
                 }
 
                 var extracted = await System.Threading.Tasks.Task.Run(() => _importExportService.ExtractSpritesFromFile(SpriteState.LinkedSourceFile), CancellationToken.None);
-                var match = extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName && s.Format == SpriteState.LinkedFormat);
+                var match = extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName && (SpriteState.LinkedFormat == null || s.Format == SpriteState.LinkedFormat))
+                    ?? extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName);
                 if (match != null)
                 {
+                    if (SpriteState.LinkedFormat == null)
+                        SpriteState.LinkedFormat = match.Format;
+
                     if (match.Width != SpriteState.Width || match.Height != SpriteState.Height)
                     {
                         ResizeCanvas(match.Width, match.Height, ResizeAnchor.TopLeft);
@@ -1101,6 +1096,9 @@ namespace Hexprite.ViewModels
 
                 LinkedFileChangedExternally = false;
                 ShowStatus($"✓ Restored {SpriteState.LinkedSourceFileName} to clean state");
+#pragma warning disable S4220 // Explicitly passing 'this' so subscribers can filter out the originating document
+                GlobalPullRequested?.Invoke(this, SpriteState.LinkedSourceFile);
+#pragma warning restore S4220
             }
             catch (Exception ex)
             {
@@ -1111,11 +1109,12 @@ namespace Hexprite.ViewModels
 
         public async Task ExecutePullLinkedSourceAsync()
         {
-            if (string.IsNullOrEmpty(SpriteState.LinkedSourceFile)) return;
+            if (SpriteState == null || !SpriteState.IsLinked) return;
+            string filePath = SpriteState.LinkedSourceFile!;
 
             using var operation = LoggingService.BeginOperation("MainViewModel.PullLinkedSource", new 
             { 
-                file = SpriteState.LinkedSourceFile, 
+                file = filePath, 
                 variable = SpriteState.LinkedVariableName,
                 format = SpriteState.LinkedFormat 
             });
@@ -1124,10 +1123,14 @@ namespace Hexprite.ViewModels
             {
                 SaveStateForUndo();
 
-                var extracted = await System.Threading.Tasks.Task.Run(() => _importExportService.ExtractSpritesFromFile(SpriteState.LinkedSourceFile), CancellationToken.None);
-                var match = extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName && s.Format == SpriteState.LinkedFormat);
+                var extracted = await System.Threading.Tasks.Task.Run(() => _importExportService.ExtractSpritesFromFile(filePath), CancellationToken.None);
+                var match = extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName && (SpriteState.LinkedFormat == null || s.Format == SpriteState.LinkedFormat))
+                    ?? extracted.FirstOrDefault(s => s.Name == SpriteState.LinkedVariableName);
                 if (match != null)
                 {
+                    if (SpriteState.LinkedFormat == null)
+                        SpriteState.LinkedFormat = match.Format;
+
                     if (match.Width != SpriteState.Width || match.Height != SpriteState.Height)
                     {
                         ResizeCanvas(match.Width, match.Height, ResizeAnchor.TopLeft);
@@ -1154,7 +1157,7 @@ namespace Hexprite.ViewModels
                     await UpdateTextOutputsAsync();
                     MarkAsClean();
                     
-                    string pulledHash = ComputeFileHash(SpriteState.LinkedSourceFile);
+                    string pulledHash = ComputeFileHash(filePath);
                     lock (_linkedFileLock)
                     {
                         if (!string.IsNullOrEmpty(pulledHash))

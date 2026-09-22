@@ -1355,18 +1355,25 @@ namespace Hexprite.ViewModels
 
         public void SuspendLinkedFileWatcher()
         {
-            Interlocked.Increment(ref _linkedFileWatcherSuspendCount);
-            if (_linkedFileWatcher != null)
-                _linkedFileWatcher.EnableRaisingEvents = false;
+            lock (_linkedFileLock)
+            {
+                _linkedFileWatcherSuspendCount++;
+                if (_linkedFileWatcher != null)
+                    _linkedFileWatcher.EnableRaisingEvents = false;
+            }
         }
 
         public void ResumeLinkedFileWatcher()
         {
-            if (Interlocked.Decrement(ref _linkedFileWatcherSuspendCount) <= 0)
+            lock (_linkedFileLock)
             {
-                Interlocked.Exchange(ref _linkedFileWatcherSuspendCount, 0);
-                if (_linkedFileWatcher != null)
-                    _linkedFileWatcher.EnableRaisingEvents = true;
+                _linkedFileWatcherSuspendCount--;
+                if (_linkedFileWatcherSuspendCount <= 0)
+                {
+                    _linkedFileWatcherSuspendCount = 0;
+                    if (_linkedFileWatcher != null)
+                        _linkedFileWatcher.EnableRaisingEvents = true;
+                }
             }
         }
 
@@ -1414,8 +1421,11 @@ namespace Hexprite.ViewModels
                 }
                 catch (Exception)
                 {
-                    int delay = Math.Min(200, 10 * (1 << Math.Min(attempt, 4)));
-                    System.Threading.Thread.Sleep(delay);
+                    if (attempt + 1 < maxRetries)
+                    {
+                        int delay = Math.Min(200, 10 * (1 << Math.Min(attempt, 4)));
+                        System.Threading.Thread.Sleep(delay);
+                    }
                 }
             }
             return string.Empty;
@@ -1423,8 +1433,11 @@ namespace Hexprite.ViewModels
 
         internal void OnLinkedFileChanged(object sender, FileSystemEventArgs e)
         {
-            if (Volatile.Read(ref _linkedFileWatcherSuspendCount) > 0)
-                return;
+            lock (_linkedFileLock)
+            {
+                if (_linkedFileWatcherSuspendCount > 0)
+                    return;
+            }
 
             string? targetFile = SpriteState?.LinkedSourceFile;
             if (string.IsNullOrEmpty(targetFile)) return;
@@ -1527,7 +1540,10 @@ namespace Hexprite.ViewModels
         /// </summary>
         public void CheckForExternalChanges()
         {
-            if (Volatile.Read(ref _linkedFileWatcherSuspendCount) > 0) return;
+            lock (_linkedFileLock)
+            {
+                if (_linkedFileWatcherSuspendCount > 0) return;
+            }
             if (!IsLinked || string.IsNullOrEmpty(SpriteState?.LinkedSourceFile)) return;
 
             string targetFile = SpriteState.LinkedSourceFile;
@@ -1544,7 +1560,7 @@ namespace Hexprite.ViewModels
                 ReattachLinkedFileWatcher();
             }
 
-            string currentHash = ComputeFileHash(targetFile);
+            string currentHash = ComputeFileHash(targetFile, maxRetries: 1);
             if (string.IsNullOrEmpty(currentHash)) return;
 
             lock (_linkedFileLock)
@@ -1973,6 +1989,7 @@ namespace Hexprite.ViewModels
         // ── Constructor ───────────────────────────────────────────────────
         private void HandleGlobalPullRequested(object? sender, string targetFile)
         {
+            if (sender == this) return;
             if (IsLinked && string.Equals(SpriteState?.LinkedSourceFile, targetFile, StringComparison.OrdinalIgnoreCase))
             {
                 _uiContext.Post(async _ => await ExecutePullLinkedSourceAsync(), state: null);
@@ -3321,14 +3338,6 @@ namespace Hexprite.ViewModels
                             }
                         }
                     }, CancellationToken.None);
-                    lock (_linkedFileLock)
-                    {
-                        if (!string.IsNullOrEmpty(newHash))
-                        {
-                            _globalLastSavedHashes[SpriteState.LinkedSourceFile] = newHash;
-                            _documentSyncedHash = newHash;
-                        }
-                    }
                 }
                 finally
                 {

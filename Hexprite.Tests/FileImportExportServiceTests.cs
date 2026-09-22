@@ -317,4 +317,32 @@ public sealed class FileImportExportServiceTests : IDisposable
         Assert.Contains("#define PAUSE_WIDTH  16", result);
         Assert.Contains("#define PAUSE_HEIGHT 16", result);
     }
+
+    [Fact]
+    public void UpdateSpriteInFile_WhenSnippetIsOnlyBraces_PreservesArrayBracketsAndAssignment()
+    {
+        string original = "const uint8_t my_sprite[] = { 0x00, 0x00 };";
+        string path = WriteTempFile("braces_only.c", original);
+
+        _svc.UpdateSpriteInFile(path, "my_sprite", "{ 0xFF, 0xAA };");
+
+        string result = File.ReadAllText(path);
+        Assert.Contains("my_sprite[] = { 0xFF, 0xAA };", result);
+        Assert.DoesNotContain("my_sprite {", result);
+    }
+
+    [Fact]
+    public void UpdateSpriteInFile_WhenSnippetHasSuffixedVariableName_DoesNotDuplicateSignatureOrName()
+    {
+        string original = "const uint8_t cursor[] = { 0x00, 0x00 };";
+        string path = WriteTempFile("suffixed_name.c", original);
+
+        _svc.UpdateSpriteInFile(path, "cursor", "const uint8_t cursor_bits[] = { 0xFF, 0xFF };");
+
+        string result = File.ReadAllText(path);
+        Assert.DoesNotContain("const uint8_t cursor const uint8_t cursor_bits", result);
+        Assert.Contains("cursor", result);
+        Assert.Contains("{ 0xFF, 0xFF };", result);
+    }
 }
+

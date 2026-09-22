@@ -348,5 +348,36 @@ namespace Hexprite.Tests
             _dialogMock.Verify(d => d.ShowConfirmation(It.IsAny<string>(), It.IsAny<string>()), Times.Never());
             Assert.False(_vm.LinkedFileChangedExternally);
         }
+
+        [Fact]
+        public void SuspendAndResumeLinkedFileWatcher_ConcurrentCalls_MaintainsAccurateWatcherState()
+        {
+            string filePath = Path.Combine(_tempDir, "suspend_test.c");
+            File.WriteAllText(filePath, "const uint8_t sprite[] = { 0x00 };");
+
+            _vm.SpriteState.LinkedSourceFile = filePath;
+            _vm.SpriteState.LinkedVariableName = "sprite";
+            _vm.SpriteState.LinkedFormat = ExportFormat.AdafruitGfx;
+            _vm.NotifyLinkChanged();
+
+            // Concurrently invoke suspend and resume
+            Parallel.For(0, 100, _ =>
+            {
+                _vm.SuspendLinkedFileWatcher();
+                _vm.ResumeLinkedFileWatcher();
+            });
+
+            // Suspend count should be 0
+            _vm.SuspendLinkedFileWatcher();
+            // Now suspended: external change should not set LinkedFileChangedExternally
+            File.WriteAllText(filePath, "const uint8_t sprite[] = { 0xFF };");
+            var eventArgs = new FileSystemEventArgs(WatcherChangeTypes.Changed, _tempDir, "suspend_test.c");
+            _vm.OnLinkedFileChanged(this, eventArgs);
+            FlushDispatcher();
+
+            Assert.False(_vm.LinkedFileChangedExternally, "While suspended, external changes must be ignored");
+
+            _vm.ResumeLinkedFileWatcher();
+        }
     }
 }

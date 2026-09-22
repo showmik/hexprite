@@ -75,7 +75,7 @@ namespace Hexprite.Core
         public ExportFormat? LinkedFormat { get; set; }
 
         [JsonIgnore]
-        public bool IsLinked => !string.IsNullOrEmpty(LinkedSourceFile);
+        public bool IsLinked => !string.IsNullOrWhiteSpace(LinkedSourceFile) && !string.IsNullOrWhiteSpace(LinkedVariableName);
 
         [JsonIgnore]
         public string? LinkedSourceFileName => string.IsNullOrEmpty(LinkedSourceFile) ? null : System.IO.Path.GetFileName(LinkedSourceFile);
