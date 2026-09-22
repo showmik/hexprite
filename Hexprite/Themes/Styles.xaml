@@ -1458,6 +1458,16 @@
         </Setter>
     </Style>
 
+    <!-- Preset Chip RadioButton — used for quick preset selection chips -->
+    <Style x:Key="PresetChipButtonStyle"
+           TargetType="RadioButton"
+           BasedOn="{StaticResource ChipButtonStyle}">
+        <Setter Property="FontFamily"  Value="Segoe UI, -apple-system, sans-serif"/>
+        <Setter Property="FontSize"    Value="11"/>
+        <Setter Property="Padding"     Value="8,4"/>
+        <Setter Property="Margin"      Value="0,0,6,6"/>
+    </Style>
+
     <!-- Small accent button — copy, parse etc. -->
     <Style x:Key="AccentButtonStyle" TargetType="Button">
         <Setter Property="Background"  Value="{DynamicResource Brush.Accent.Base}"/>

@@ -292,5 +292,134 @@ namespace Hexprite.Tests
                 }
             });
         }
+
+        [Fact]
+        public void ImportBitmapDialog_QuickChips_SelectionAndDescriptionUpdate()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempPng();
+                try
+                {
+                    var initialSettings = new BitmapImportSettings
+                    {
+                        Preset = ImportPreset.Photo
+                    };
+
+                    using var dlg = new ImportBitmapDialog(tempFile, initialSettings);
+                    var chipDefault = (RadioButton)dlg.FindName("ChipPresetDefault");
+                    var chipPhoto = (RadioButton)dlg.FindName("ChipPresetPhoto");
+                    var chipPixelArt = (RadioButton)dlg.FindName("ChipPresetPixelArt");
+                    var chipCustom = (RadioButton)dlg.FindName("ChipPresetCustom");
+                    var txtDesc = (TextBlock)dlg.FindName("TxtPresetDescription");
+                    var sldBrightness = (Slider)dlg.FindName("SldBrightness");
+                    var scalingCombo = (ComboBox)dlg.FindName("ScalingCombo");
+
+                    Assert.NotNull(chipDefault);
+                    Assert.NotNull(chipPhoto);
+                    Assert.NotNull(chipPixelArt);
+                    Assert.NotNull(chipCustom);
+                    Assert.NotNull(txtDesc);
+
+                    // Initial state from Photo preset
+                    Assert.True(chipPhoto.IsChecked);
+                    Assert.False(chipDefault.IsChecked);
+                    Assert.False(chipCustom.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Photo), txtDesc.Text);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Photo), chipPhoto.ToolTip);
+
+                    // Click PixelArt chip
+                    chipPixelArt.IsChecked = true;
+                    chipPixelArt.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+                    Assert.True(chipPixelArt.IsChecked);
+                    Assert.False(chipPhoto.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.PixelArt), txtDesc.Text);
+                    Assert.Equal(BitmapScalingMode.NearestNeighbor, scalingCombo.SelectedItem);
+
+                    // Tweak slider -> should switch to Custom
+                    sldBrightness.Value = 33;
+                    Assert.True(chipCustom.IsChecked);
+                    Assert.False(chipPixelArt.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Custom), txtDesc.Text);
+
+                    // Reset -> should switch to Default
+                    var resetMethod = typeof(ImportBitmapDialog).GetMethod("Reset_Click", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Assert.NotNull(resetMethod);
+                    resetMethod.Invoke(dlg, new object?[] { null, new System.Windows.RoutedEventArgs() });
+
+                    Assert.True(chipDefault.IsChecked);
+                    Assert.False(chipCustom.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Default), txtDesc.Text);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
+
+        [Fact]
+        public void ImportAnimationDialog_QuickChips_SelectionAndDescriptionUpdate()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempPng();
+                try
+                {
+                    var initialSettings = new AnimationImportSettings
+                    {
+                        Preset = ImportPreset.LineArt
+                    };
+
+                    using var dlg = new ImportAnimationDialog(tempFile, initialSettings);
+                    var chipDefault = (RadioButton)dlg.FindName("ChipPresetDefault");
+                    var chipLineArt = (RadioButton)dlg.FindName("ChipPresetLineArt");
+                    var chipRetroMac = (RadioButton)dlg.FindName("ChipPresetRetroMac");
+                    var chipCustom = (RadioButton)dlg.FindName("ChipPresetCustom");
+                    var txtDesc = (TextBlock)dlg.FindName("TxtPresetDescription");
+                    var sldContrast = (Slider)dlg.FindName("SldContrast");
+
+                    Assert.NotNull(chipDefault);
+                    Assert.NotNull(chipLineArt);
+                    Assert.NotNull(chipRetroMac);
+                    Assert.NotNull(chipCustom);
+                    Assert.NotNull(txtDesc);
+
+                    // Initial state from LineArt preset
+                    Assert.True(chipLineArt.IsChecked);
+                    Assert.False(chipDefault.IsChecked);
+                    Assert.False(chipCustom.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.LineArt), txtDesc.Text);
+
+                    // Click RetroMac chip
+                    chipRetroMac.IsChecked = true;
+                    chipRetroMac.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+
+                    Assert.True(chipRetroMac.IsChecked);
+                    Assert.False(chipLineArt.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.RetroMac), txtDesc.Text);
+
+                    // Tweak slider -> should switch to Custom
+                    sldContrast.Value = 44;
+                    Assert.True(chipCustom.IsChecked);
+                    Assert.False(chipRetroMac.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Custom), txtDesc.Text);
+
+                    // Reset -> should switch to Default
+                    var resetMethod = typeof(ImportAnimationDialog).GetMethod("Reset_Click", BindingFlags.NonPublic | BindingFlags.Instance);
+                    Assert.NotNull(resetMethod);
+                    resetMethod.Invoke(dlg, new object?[] { null, new System.Windows.RoutedEventArgs() });
+
+                    Assert.True(chipDefault.IsChecked);
+                    Assert.False(chipCustom.IsChecked);
+                    Assert.Equal(ImportPresetHelper.GetPresetDescription(ImportPreset.Default), txtDesc.Text);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
     }
 }

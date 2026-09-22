@@ -90,22 +90,33 @@
                                TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}" />
 
-                    <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,12">
+                    <StackPanel Grid.Row="2" Margin="0,0,0,14">
                         <TextBlock Text="Import Profile"
-                                   Width="120"
-                                   VerticalAlignment="Center"
                                    Foreground="{DynamicResource Brush.Text.Primary}"
-                                   FontWeight="SemiBold" />
-                        <ComboBox x:Name="PresetCombo"
-                                  Width="220"
-                                  Height="28"
-                                  Style="{StaticResource ModernComboBoxStyle}">
-                            <ComboBox.ItemContainerStyle>
-                                <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
-                                    <Setter Property="ToolTip" Value="{Binding Description}" />
-                                </Style>
-                            </ComboBox.ItemContainerStyle>
-                        </ComboBox>
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8" />
+                        <WrapPanel x:Name="PresetChipsPanel" Margin="0,0,0,8">
+                            <RadioButton x:Name="ChipPresetDefault" Content="Default" Tag="Default" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetPhoto" Content="Photo" Tag="Photo" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetRetroMac" Content="Retro Mac" Tag="RetroMac" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetPixelArt" Content="Pixel Art" Tag="PixelArt" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetLineArt" Content="Line Art" Tag="LineArt" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetSolidLogo" Content="Solid Logo" Tag="SolidLogo" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                            <RadioButton x:Name="ChipPresetCustom" Content="Custom" Tag="Custom" GroupName="AnimPresetChips" Style="{StaticResource PresetChipButtonStyle}" Click="PresetChip_Click" />
+                        </WrapPanel>
+                        <Border Background="{DynamicResource Brush.Surface.Panel}"
+                                BorderBrush="{DynamicResource Brush.Border.Base}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Padding="10,7"
+                                Margin="0,0,0,2">
+                            <TextBlock x:Name="TxtPresetDescription"
+                                       TextWrapping="Wrap"
+                                       FontSize="11"
+                                       LineHeight="16"
+                                       Foreground="{DynamicResource Brush.Text.Muted}" />
+                        </Border>
+                        <ComboBox x:Name="PresetCombo" Visibility="Collapsed" />
                     </StackPanel>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">

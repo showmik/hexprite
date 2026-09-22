@@ -113,6 +113,15 @@ namespace Hexprite.Views
             }
             catch { }
             
+            ChipPresetDefault.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Default);
+            ChipPresetPhoto.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Photo);
+            ChipPresetRetroMac.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.RetroMac);
+            ChipPresetPixelArt.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.PixelArt);
+            ChipPresetLineArt.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.LineArt);
+            ChipPresetSolidLogo.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.SolidLogo);
+            ChipPresetCustom.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Custom);
+            SyncPresetChips(initialSettings.Preset);
+
             _isApplyingPreset = true;
             RefreshImportEnabled();
             _isApplyingPreset = false;
@@ -302,6 +311,7 @@ namespace Hexprite.Views
 
             PresetCombo.SelectedValue = ImportPreset.Default;
             PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Default);
+            SyncPresetChips(ImportPreset.Default);
 
             TxtTargetFps.Text = "8";
             SldTargetFps.Value = 8;
@@ -433,6 +443,7 @@ namespace Hexprite.Views
                 _isUpdatingFromCode = true;
                 PresetCombo.SelectedValue = ImportPreset.Custom;
                 PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Custom);
+                SyncPresetChips(ImportPreset.Custom);
                 _isUpdatingFromCode = false;
             }
 
@@ -777,6 +788,7 @@ namespace Hexprite.Views
             if (PresetCombo.SelectedValue is not ImportPreset preset) return;
 
             PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(preset);
+            SyncPresetChips(preset);
 
             if (preset == ImportPreset.Custom) return;
 
@@ -819,6 +831,32 @@ namespace Hexprite.Views
             RefreshImportEnabled();
 
             _isApplyingPreset = false;
+        }
+
+        private void PresetChip_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton rb && rb.Tag is string tag && Enum.TryParse<ImportPreset>(tag, out var preset))
+            {
+                PresetCombo.SelectedValue = preset;
+            }
+        }
+
+        private void SyncPresetChips(ImportPreset preset)
+        {
+            if (ChipPresetDefault == null) return;
+
+            ChipPresetDefault.IsChecked = preset == ImportPreset.Default;
+            ChipPresetPhoto.IsChecked = preset == ImportPreset.Photo;
+            ChipPresetRetroMac.IsChecked = preset == ImportPreset.RetroMac;
+            ChipPresetPixelArt.IsChecked = preset == ImportPreset.PixelArt;
+            ChipPresetLineArt.IsChecked = preset == ImportPreset.LineArt;
+            ChipPresetSolidLogo.IsChecked = preset == ImportPreset.SolidLogo;
+            ChipPresetCustom.IsChecked = preset == ImportPreset.Custom;
+
+            if (TxtPresetDescription != null)
+            {
+                TxtPresetDescription.Text = ImportPresetHelper.GetPresetDescription(preset);
+            }
         }
 
         public void Dispose()
