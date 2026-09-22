@@ -5,7 +5,7 @@
   **The dedicated pixel art and font editor for embedded displays.**
 
   [![Platform](https://img.shields.io/badge/platform-Windows%20WPF%20%7C%20.NET%2010-blue)](#)
-  [![License](https://img.shields.io/badge/license-Freeware%20EULA-green)](LICENSE)
+  [![License](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
   [![Website](https://img.shields.io/badge/website-hexprite.com-purple)](https://hexprite.com)
 </div>
 
@@ -157,19 +157,25 @@ That frustration led me to create Hexprite. I have spent the last five months wo
 
 ### The Current State of Hexprite
 
-Right now, the software is in beta. I plan to actively keep developing Hexprite and make it useful to the community. In the future, I also want to release a version with full color display support, which will require more funding to pull off. I really hope this tool saves you as much time as it saves me.
+Right now, the software is in beta. I plan to actively keep developing Hexprite and make it useful to the community. In the future, I also want to release a version with full color display support. I really hope this tool saves you as much time as it saves me.
 
-## 🔓 The $500 Open-Source Goal
+## 🗺️ Development Roadmap
 
-Hexprite is currently distributed as a closed-source Freeware application. I am committed to keeping the core monochrome features entirely free forever.
+| Phase | Milestone | Focus Areas |
+|---|---|---|
+| **Phase 01** | `v0.3.x Beta → v1.0 Stable`<br/>*(Active Focus)* | Strict 1-Bit Engine, Embedded Font Studio, Live Hardware Streaming (Auto-Baud), Code Gen (Adafruit GFX/u8g2/LiquidCrystal/MicroPython), Multi-Color E-Paper (B/W/Red 2-bit planes), and Tilemap Studio. |
+| **Phase 02** | `v1.1.0 → v1.5.0`<br/>*(Planned Next)* | Keyframe Motion Timeline & Curves, Dual-Mode Tweening (Pre-baked for 8-bit + C runtime for 32-bit), Headless `hexprite-cli` for CI/CD & PlatformIO, VS Code Extension, and Cross-Platform Port (Linux & macOS via modern UI). |
+| **Phase 03** | `v2.0.0`<br/>*(Future Release)* | Popular TFT Displays (ST7789, ILI9341, GC9A01), Multi-Depth Canvas (1-bit, 2/4-bit grayscale, 16-bit color), 16/256-Color Hardware Palettes, LVGL True-Color Export, and SPI Flash / SD Card Asset Packaging. |
 
-Once we reach $500 in community donations, the complete Hexprite Monochrome codebase (C# / WPF) will be released under an open-source license.
+## ♥ Support the Project
+
+Hexprite is 100% free and open-source software licensed under the **GNU GPLv3**. If Hexprite saves you time or helps bring your hardware projects to life, please consider supporting ongoing development on [Patreon](https://www.patreon.com/hexprite) or starring the project on GitHub!
 
 ## 📄 License
 
-Hexprite is licensed under the **Freeware End-User License Agreement (EULA)**.
+Hexprite is free and open-source software licensed under the **GNU General Public License v3.0 (GPLv3)**.
 
-See the [LICENSE](LICENSE) file for full details. In short, the software is free to use for personal, educational, and internal commercial purposes (such as creating assets for your hardware or software projects).
+See the [LICENSE](LICENSE) file for full details.
 
 ## 🔗 Links
 
