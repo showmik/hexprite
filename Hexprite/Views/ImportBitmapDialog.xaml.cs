@@ -39,15 +39,16 @@ namespace Hexprite.Views
             PresetCombo.SelectedValuePath = "Value";
             PresetCombo.ItemsSource = new[]
             {
-                new { Name = "Custom", Value = ImportPreset.Custom },
-                new { Name = "Default", Value = ImportPreset.Default },
-                new { Name = "Photo (Floyd-Steinberg)", Value = ImportPreset.Photo },
-                new { Name = "Retro Mac (Atkinson)", Value = ImportPreset.RetroMac },
-                new { Name = "Pixel Art (Bayer)", Value = ImportPreset.PixelArt },
-                new { Name = "Line Art (Binary)", Value = ImportPreset.LineArt },
-                new { Name = "Solid Logo", Value = ImportPreset.SolidLogo },
+                new { Name = "Custom", Value = ImportPreset.Custom, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.Custom) },
+                new { Name = "Default", Value = ImportPreset.Default, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.Default) },
+                new { Name = "Photo (Floyd-Steinberg)", Value = ImportPreset.Photo, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.Photo) },
+                new { Name = "Retro Mac (Atkinson)", Value = ImportPreset.RetroMac, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.RetroMac) },
+                new { Name = "Pixel Art (Bayer)", Value = ImportPreset.PixelArt, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.PixelArt) },
+                new { Name = "Line Art (Binary)", Value = ImportPreset.LineArt, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.LineArt) },
+                new { Name = "Solid Logo", Value = ImportPreset.SolidLogo, Description = ImportPresetHelper.GetPresetDescription(ImportPreset.SolidLogo) },
             };
-            PresetCombo.SelectedValue = ImportPreset.Custom;
+            PresetCombo.SelectedValue = initialSettings.Preset;
+            PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(initialSettings.Preset);
 
             DitherCombo.ItemsSource = Enum.GetValues<BitmapDitheringAlgorithm>();
             DitherCombo.SelectedItem = initialSettings.DitheringAlgorithm;
@@ -87,7 +88,9 @@ namespace Hexprite.Views
 
             UpdateThresholdUiState();
             _shouldFitPreviewToFrame = true;
+            _isApplyingPreset = true;
             RefreshImportEnabled();
+            _isApplyingPreset = false;
         }
 
         private void ChkAdaptiveThreshold_CheckedChanged(object sender, RoutedEventArgs e)
@@ -121,9 +124,11 @@ namespace Hexprite.Views
 
         private void Reset_Click(object sender, RoutedEventArgs e)
         {
+            _isApplyingPreset = true;
             _isUpdatingFromCode = true;
 
             PresetCombo.SelectedValue = ImportPreset.Default;
+            PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Default);
             DitherCombo.SelectedItem = BitmapDitheringAlgorithm.Atkinson;
             ScalingCombo.SelectedItem = Hexprite.Services.BitmapScalingMode.Fant;
             
@@ -163,6 +168,7 @@ namespace Hexprite.Views
             UpdateThresholdUiState();
             _shouldFitPreviewToFrame = true;
             RefreshImportEnabled();
+            _isApplyingPreset = false;
         }
 
         private void CaptionClose_Click(object sender, RoutedEventArgs e)
@@ -339,6 +345,7 @@ namespace Hexprite.Views
             {
                 _isUpdatingFromCode = true;
                 PresetCombo.SelectedValue = ImportPreset.Custom;
+                PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(ImportPreset.Custom);
                 _isUpdatingFromCode = false;
             }
 
@@ -549,8 +556,11 @@ namespace Hexprite.Views
             if (ScalingCombo.SelectedItem is not Hexprite.Services.BitmapScalingMode scalingMode)
                 return false;
 
+            var activePreset = PresetCombo?.SelectedValue is ImportPreset p ? p : ImportPreset.Custom;
+
             settings = new BitmapImportSettings
             {
+                Preset = activePreset,
                 DitheringAlgorithm = algorithm,
                 ScalingMode = scalingMode,
                 Threshold = threshold,
@@ -615,6 +625,9 @@ namespace Hexprite.Views
         {
             if (_isUpdatingFromCode || _isApplyingPreset) return;
             if (PresetCombo.SelectedValue is not ImportPreset preset) return;
+
+            PresetCombo.ToolTip = ImportPresetHelper.GetPresetDescription(preset);
+
             if (preset == ImportPreset.Custom) return;
 
             if (!TryReadSettings(out var currentSettings) || currentSettings == null) 
@@ -628,6 +641,7 @@ namespace Hexprite.Views
             _isUpdatingFromCode = true;
 
             DitherCombo.SelectedItem = currentSettings.DitheringAlgorithm;
+            ScalingCombo.SelectedItem = currentSettings.ScalingMode;
             
             SldThreshold.Value = currentSettings.Threshold;
             TxtThreshold.Text = currentSettings.Threshold.ToString(CultureInfo.InvariantCulture);

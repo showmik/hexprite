@@ -42,11 +42,12 @@ namespace Hexprite.Tests
         [Fact]
         public void ApplyPreset_Default_AppliesDefaultValues()
         {
-            var settings = new BitmapImportSettings { Threshold = 999, Invert = true };
+            var settings = new BitmapImportSettings { Threshold = 999, Invert = true, ScalingMode = BitmapScalingMode.NearestNeighbor };
 
             ImportPresetHelper.ApplyPreset(ImportPreset.Default, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.Atkinson, settings.DitheringAlgorithm);
+            Assert.Equal(BitmapScalingMode.Fant, settings.ScalingMode);
             Assert.Equal(128, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
             Assert.Equal(0, settings.Contrast);
@@ -67,6 +68,7 @@ namespace Hexprite.Tests
             ImportPresetHelper.ApplyPreset(ImportPreset.Photo, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.FloydSteinberg, settings.DitheringAlgorithm);
+            Assert.Equal(BitmapScalingMode.Fant, settings.ScalingMode);
             Assert.Equal(128, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
             Assert.Equal(5, settings.Contrast);
@@ -74,7 +76,7 @@ namespace Hexprite.Tests
             Assert.True(settings.Sharpen);
             Assert.True(settings.UseSerpentineScanning);
             Assert.True(settings.UseGammaCorrection);
-            Assert.True(settings.UseAdaptiveThresholding);
+            Assert.False(settings.UseAdaptiveThresholding);
             Assert.False(settings.PreserveEdges);
             Assert.False(settings.Invert);
         }
@@ -87,6 +89,7 @@ namespace Hexprite.Tests
             ImportPresetHelper.ApplyPreset(ImportPreset.RetroMac, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.Atkinson, settings.DitheringAlgorithm);
+            Assert.Equal(BitmapScalingMode.Fant, settings.ScalingMode);
             Assert.Equal(128, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
             Assert.Equal(15, settings.Contrast);
@@ -107,6 +110,7 @@ namespace Hexprite.Tests
             ImportPresetHelper.ApplyPreset(ImportPreset.PixelArt, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.Bayer, settings.DitheringAlgorithm);
+            Assert.Equal(BitmapScalingMode.NearestNeighbor, settings.ScalingMode);
             Assert.Equal(128, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
             Assert.Equal(10, settings.Contrast);
@@ -127,15 +131,16 @@ namespace Hexprite.Tests
             ImportPresetHelper.ApplyPreset(ImportPreset.LineArt, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.Binary, settings.DitheringAlgorithm);
-            Assert.Equal(160, settings.Threshold);
+            Assert.Equal(BitmapScalingMode.Fant, settings.ScalingMode);
+            Assert.Equal(150, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
-            Assert.Equal(-10, settings.Contrast);
+            Assert.Equal(15, settings.Contrast);
             Assert.Equal(0, settings.DitherAmount);
             Assert.True(settings.Sharpen);
             Assert.False(settings.UseSerpentineScanning);
             Assert.False(settings.UseGammaCorrection);
             Assert.False(settings.UseAdaptiveThresholding);
-            Assert.True(settings.PreserveEdges);
+            Assert.False(settings.PreserveEdges);
             Assert.False(settings.Invert);
         }
 
@@ -147,6 +152,7 @@ namespace Hexprite.Tests
             ImportPresetHelper.ApplyPreset(ImportPreset.SolidLogo, settings);
 
             Assert.Equal(BitmapDitheringAlgorithm.Binary, settings.DitheringAlgorithm);
+            Assert.Equal(BitmapScalingMode.Fant, settings.ScalingMode);
             Assert.Equal(128, settings.Threshold);
             Assert.Equal(0, settings.Brightness);
             Assert.Equal(20, settings.Contrast);
@@ -155,8 +161,55 @@ namespace Hexprite.Tests
             Assert.False(settings.UseSerpentineScanning);
             Assert.False(settings.UseGammaCorrection);
             Assert.False(settings.UseAdaptiveThresholding);
-            Assert.True(settings.PreserveEdges);
+            Assert.False(settings.PreserveEdges);
             Assert.False(settings.Invert);
+        }
+
+        [Fact]
+        public void GetPresetDescription_ReturnsNonEmptyDescriptionForAllPresets()
+        {
+            foreach (ImportPreset preset in System.Enum.GetValues<ImportPreset>())
+            {
+                string desc = ImportPresetHelper.GetPresetDescription(preset);
+                Assert.False(string.IsNullOrWhiteSpace(desc), $"Preset {preset} should have a non-empty description.");
+            }
+        }
+
+        [Fact]
+        public void BitmapImportSettings_DefaultPreset_IsDefault()
+        {
+            var settings = new BitmapImportSettings();
+            Assert.Equal(ImportPreset.Default, settings.Preset);
+        }
+
+        [Fact]
+        public void BitmapImportSettings_Serialization_RoundTripsPreset()
+        {
+            var original = new BitmapImportSettings
+            {
+                Preset = ImportPreset.PixelArt,
+                ScalingMode = BitmapScalingMode.NearestNeighbor
+            };
+
+            string json = System.Text.Json.JsonSerializer.Serialize(original);
+            var deserialized = System.Text.Json.JsonSerializer.Deserialize<BitmapImportSettings>(json);
+
+            Assert.NotNull(deserialized);
+            Assert.Equal(ImportPreset.PixelArt, deserialized.Preset);
+            Assert.Equal(BitmapScalingMode.NearestNeighbor, deserialized.ScalingMode);
+        }
+
+        [Fact]
+        public void AnimationImportSettings_FromBase_PreservesPreset()
+        {
+            var baseSettings = new BitmapImportSettings
+            {
+                Preset = ImportPreset.RetroMac
+            };
+
+            var animSettings = AnimationImportSettings.FromBase(baseSettings);
+
+            Assert.Equal(ImportPreset.RetroMac, animSettings.Preset);
         }
     }
 }

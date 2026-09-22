@@ -99,7 +99,13 @@
                         <ComboBox x:Name="PresetCombo"
                                   Width="220"
                                   Height="28"
-                                  Style="{StaticResource ModernComboBoxStyle}" />
+                                  Style="{StaticResource ModernComboBoxStyle}">
+                            <ComboBox.ItemContainerStyle>
+                                <Style TargetType="ComboBoxItem" BasedOn="{StaticResource {x:Type ComboBoxItem}}">
+                                    <Setter Property="ToolTip" Value="{Binding Description}" />
+                                </Style>
+                            </ComboBox.ItemContainerStyle>
+                        </ComboBox>
                     </StackPanel>
 
                     <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,0,0,8">

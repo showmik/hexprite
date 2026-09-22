@@ -127,7 +127,7 @@ namespace Hexprite.Services
             {
                 var formatted = frame.Format == PixelFormats.Bgra32
                     ? frame
-                    : new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+                    : new FormatConvertedBitmap(frame, PixelFormats.Bgra32, destinationPalette: null, 0);
 
                 int fw = frame.PixelWidth;
                 int fh = frame.PixelHeight;

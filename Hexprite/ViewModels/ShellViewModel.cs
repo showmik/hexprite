@@ -2514,6 +2514,8 @@ namespace Hexprite.ViewModels
                 saved.Brightness = Math.Clamp(saved.Brightness, -100, 100);
                 saved.Contrast = Math.Clamp(saved.Contrast, -100, 100);
                 saved.DitherAmount = Math.Clamp(saved.DitherAmount, 0, 100);
+                if (!Enum.IsDefined(saved.Preset))
+                    saved.Preset = ImportPreset.Default;
                 return saved;
             }
             catch (Exception ex)

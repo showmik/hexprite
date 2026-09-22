@@ -35,6 +35,7 @@ namespace Hexprite.Services
     /// </summary>
     public class BitmapImportSettings
     {
+        public ImportPreset Preset { get; set; } = ImportPreset.Default;
         public int MaxDimension { get; set; } = 128;
         public int Threshold { get; set; } = 128;
         public int AlphaThreshold { get; set; } = 128;

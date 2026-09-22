@@ -18,6 +18,7 @@ namespace Hexprite.Services
         {
             return new AnimationImportSettings
             {
+                Preset = source.Preset,
                 MaxDimension = source.MaxDimension,
                 Threshold = source.Threshold,
                 AlphaThreshold = source.AlphaThreshold,

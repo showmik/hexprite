@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.IO;
 using System.Windows.Media;
 
@@ -169,7 +170,7 @@ namespace Hexprite.Services
             int expectedLength = fw * fh;
             if (indexedPixels.Length != expectedLength)
             {
-                throw new ArgumentException($"Indexed pixel buffer length ({indexedPixels.Length}) must equal frame width * height ({expectedLength}).", nameof(indexedPixels));
+                throw new ArgumentException(string.Create(CultureInfo.InvariantCulture, $"Indexed pixel buffer length ({indexedPixels.Length}) must equal frame width * height ({expectedLength})."), nameof(indexedPixels));
             }
 
             EnsureGlobalColorTableWritten();
