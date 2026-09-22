@@ -1754,4 +1754,147 @@ const uint8_t anim[2][16] = {
         var f2 = state.Frames[1].LayerPixels[0].GetMonochromeData();
         Assert.False(f2[0]); Assert.True(f2[15]);
     }
+
+    [Fact]
+    public void CalculateByteCount_Indexed2D_CalculatesOneBytePerPixel()
+    {
+        // BUG-CG-01: Indexed2D is 1 byte per pixel, not 1 bit per pixel
+        var svc = new CodeGeneratorService();
+        var frame = new bool[16 * 16];
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.Indexed2D,
+            ExportAsAnimation = false,
+        };
+
+        int byteCount = svc.CalculateByteCount([frame], 16, 16, settings);
+
+        // 16x16 at 1 byte per pixel must be 256 bytes, not 32 bytes (which was 16 * ceil(16/8))
+        Assert.Equal(256, byteCount);
+    }
+
+    [Fact]
+    public void CalculateByteCount_Indexed2D_Animation_CalculatesAllFrames()
+    {
+        // BUG-CG-01: Multi-frame animation in Indexed2D
+        var svc = new CodeGeneratorService();
+        var f1 = new bool[16 * 16];
+        var f2 = new bool[16 * 16];
+        var f3 = new bool[16 * 16];
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.Indexed2D,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.ArrayOfFrames,
+        };
+
+        int byteCount = svc.CalculateByteCount([f1, f2, f3], 16, 16, settings);
+
+        Assert.Equal(256 * 3, byteCount);
+    }
+
+    [Fact]
+    public void CalculateByteCount_FlipperFormats_DoNotApplyCompression()
+    {
+        // BUG-CG-02: FlipperCompressedBitmap and FlipperCanvasIcon should not report compressed size
+        // when GenerateCode does not compress them.
+        var compressionMock = new Moq.Mock<Hexprite.Services.Compression.ICompressionService>();
+        compressionMock.Setup(c => c.Compress(Moq.It.IsAny<byte[]>(), Moq.It.IsAny<CompressionMode>()))
+            .Returns(new byte[5]); // Pretend compression reduced to 5 bytes
+
+        var svc = new CodeGeneratorService(compressionMock.Object);
+        var frame = new bool[16 * 16];
+        var settingsBitmap = new ExportSettings
+        {
+            Format = ExportFormat.FlipperCompressedBitmap,
+            Compression = CompressionMode.Rle,
+            ExportAsAnimation = false,
+        };
+        var settingsIcon = new ExportSettings
+        {
+            Format = ExportFormat.FlipperCanvasIcon,
+            Compression = CompressionMode.Rle,
+            ExportAsAnimation = false,
+        };
+
+        int countBitmap = svc.CalculateByteCount([frame], 16, 16, settingsBitmap);
+        int countIcon = svc.CalculateByteCount([frame], 16, 16, settingsIcon);
+
+        // 16x16 monochrome frame = 16 * 2 = 32 bytes uncompressed
+        Assert.Equal(32, countBitmap);
+        Assert.Equal(32, countIcon);
+    }
+
+    [Fact]
+    public void GenerateCode_FlipperAnimation_EmitsDelaysArrayWhenCustomDelaysExist()
+    {
+        // BUG-CG-03: Flipper animation builders must emit _DELAYS when custom delays are provided
+        var svc = new CodeGeneratorService();
+        var f1 = new bool[16 * 16];
+        var f2 = new bool[16 * 16];
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.FlipperXbm,
+            SpriteName = "test_flipper",
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.ArrayOfFrames,
+        };
+
+        string code = svc.GenerateCode([f1, f2], 16, 16, settings, isFloating: false, floatingPixels: null, 0, 0, 0, 0,
+            FloatingPasteMode.Transparent, frameDelays: [1, 2]);
+
+        Assert.Contains("TEST_FLIPPER_DELAYS", code);
+    }
+
+    [Fact]
+    public void GenerateCode_WrapWithCompression_Uses32BitSizesForLargeCanvases()
+    {
+        // BUG-CG-04: Size constants must use uint32_t to avoid overflow for large canvases
+        var compressionMock = new Moq.Mock<Hexprite.Services.Compression.ICompressionService>();
+        compressionMock.Setup(c => c.Compress(Moq.It.IsAny<byte[]>(), Moq.It.IsAny<CompressionMode>()))
+            .Returns<byte[], CompressionMode>((data, mode) => new byte[data.Length / 2]);
+        compressionMock.Setup(c => c.GenerateDecompressorCode(Moq.It.IsAny<CompressionMode>()))
+            .Returns("// decompressor");
+
+        var svc = new CodeGeneratorService(compressionMock.Object);
+        var frame = new bool[32 * 32];
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            SpriteName = "large_sprite",
+            Compression = CompressionMode.Rle,
+            ExportAsAnimation = false,
+        };
+
+        string code = svc.GenerateCode([frame], 32, 32, settings, isFloating: false, floatingPixels: null, 0, 0, 0, 0);
+
+        Assert.Contains("const uint32_t LARGE_SPRITE_COMPRESSED_SIZE", code);
+        Assert.Contains("const uint32_t LARGE_SPRITE_UNCOMPRESSED_SIZE", code);
+    }
+
+    [Fact]
+    public void GenerateCode_SpriteSheet_EmitsFrameDimensionsAndCount()
+    {
+        // BUG-CG-06: Horizontal and Vertical sprite sheets must include frame dimensions and frame count
+        var svc = new CodeGeneratorService();
+        var f1 = new bool[16 * 16];
+        var f2 = new bool[16 * 16];
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            SpriteName = "sheet_sprite",
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.HorizontalSpriteSheet,
+            IncludeDimensionConstants = true,
+        };
+
+        string code = svc.GenerateCode([f1, f2], 16, 16, settings, isFloating: false, floatingPixels: null, 0, 0, 0, 0);
+
+        Assert.Contains("SHEET_SPRITE_WIDTH", code);
+        Assert.Contains("SHEET_SPRITE_HEIGHT", code);
+        Assert.Contains("SHEET_SPRITE_FRAME_WIDTH", code);
+        Assert.Contains("SHEET_SPRITE_FRAME_HEIGHT", code);
+        Assert.Contains("SHEET_SPRITE_FRAMES", code);
+    }
 }
+

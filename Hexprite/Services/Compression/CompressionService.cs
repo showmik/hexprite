@@ -55,17 +55,17 @@ namespace Hexprite.Services.Compression
   #define _hxp_pgm_read(ptr) (*(const uint8_t*)(ptr))
 #endif
 
-static inline void hexprite_rle_decode(const uint8_t* src, uint16_t srcLen,
-                                uint8_t* dst, uint16_t dstLen) {
+static inline void hexprite_rle_decode(const uint8_t* src, uint32_t srcLen,
+                                uint8_t* dst, uint32_t dstLen) {
     if (srcLen == 0) return;
     const uint8_t esc = _hxp_pgm_read(&src[0]);
-    uint16_t si = 1, di = 0;
+    uint32_t si = 1, di = 0;
     while (si < srcLen && di < dstLen) {
         uint8_t current = _hxp_pgm_read(&src[si]);
         if (current == esc && si + 2 < srcLen) {
             uint8_t count = _hxp_pgm_read(&src[si + 1]);
             uint8_t value = _hxp_pgm_read(&src[si + 2]);
-            for (uint16_t j = 0; j < count && di < dstLen; j++)
+            for (uint32_t j = 0; j < count && di < dstLen; j++)
                 dst[di++] = value;
             si += 3;
         } else {
@@ -86,7 +86,7 @@ static inline void hexprite_rle_decode(const uint8_t* src, uint16_t srcLen,
   #define _hxp_pgm_read(ptr) (*(const uint8_t*)(ptr))
 #endif
 
-static uint16_t _hxp_bits(const uint8_t* s, uint16_t* p, uint8_t n) {
+static uint16_t _hxp_bits(const uint8_t* s, uint32_t* p, uint8_t n) {
     uint16_t v = 0;
     for (uint8_t i = 0; i < n; i++) {
         uint8_t b = _hxp_pgm_read(&s[*p >> 3]);
@@ -96,9 +96,9 @@ static uint16_t _hxp_bits(const uint8_t* s, uint16_t* p, uint8_t n) {
     return v;
 }
 
-static inline void hexprite_lzss_decode(const uint8_t* src, uint16_t srcLen,
-                                 uint8_t* dst, uint16_t dstLen) {
-    uint16_t sb = (uint16_t)(srcLen * 8), si = 0, di = 0;
+static inline void hexprite_lzss_decode(const uint8_t* src, uint32_t srcLen,
+                                 uint8_t* dst, uint32_t dstLen) {
+    uint32_t sb = srcLen * 8, si = 0, di = 0;
     while (si + 9 <= sb && di < dstLen) {
         if (_hxp_bits(src, &si, 1)) {
             dst[di++] = (uint8_t)_hxp_bits(src, &si, 8);

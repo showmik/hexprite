@@ -67,8 +67,44 @@ namespace Hexprite.Services
             };
         }
 
+        private static List<GlyphState> EnsureContiguousGlyphs(FontDocument doc, List<GlyphState> glyphs)
+        {
+            if (doc.FirstChar > doc.LastChar) return glyphs;
+
+            var glyphLookup = new Dictionary<int, GlyphState>(glyphs.Count);
+            foreach (var g in glyphs)
+            {
+                glyphLookup[g.CodePoint] = g;
+            }
+
+            var contiguous = new List<GlyphState>(doc.LastChar - doc.FirstChar + 1);
+            for (int cp = doc.FirstChar; cp <= doc.LastChar; cp++)
+            {
+                if (glyphLookup.TryGetValue(cp, out var g))
+                {
+                    contiguous.Add(g);
+                }
+                else
+                {
+                    contiguous.Add(new GlyphState
+                    {
+                        CodePoint = cp,
+                        Width = 0,
+                        Height = 0,
+                        XAdvance = 0,
+                        XOffset = 0,
+                        YOffset = 0,
+                        Pixels = [],
+                    });
+                }
+            }
+
+            return contiguous;
+        }
+
         private static string GenerateAdafruitGfx(FontDocument doc, FontExportSettings settings, List<GlyphState> glyphs)
         {
+            glyphs = EnsureContiguousGlyphs(doc, glyphs);
             var sb = new StringBuilder();
             string name = SanitiseFontName(settings.FontName);
             string hexFmt = settings.UppercaseHex ? "X2" : "x2";
@@ -524,6 +560,7 @@ namespace Hexprite.Services
 
         private static string GenerateRawCArray(FontDocument doc, FontExportSettings settings, List<GlyphState> glyphs)
         {
+            glyphs = EnsureContiguousGlyphs(doc, glyphs);
             var sb = new StringBuilder();
             string name = SanitiseFontName(settings.FontName);
             string hexFmt = settings.UppercaseHex ? "X2" : "x2";
@@ -672,6 +709,7 @@ namespace Hexprite.Services
 
         private static string GenerateFlipperZero(FontDocument doc, FontExportSettings settings, List<GlyphState> glyphs)
         {
+            glyphs = EnsureContiguousGlyphs(doc, glyphs);
             var sb = new StringBuilder();
             string name = SanitiseFontName(settings.FontName);
             string hexFmt = settings.UppercaseHex ? "X2" : "x2";

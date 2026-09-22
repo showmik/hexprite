@@ -171,12 +171,7 @@ namespace Hexprite.Services
             // ── Apply compression ────────────────────────────────────────────
             bool compressionActive = _compression != null
                 && settings.Compression != CompressionMode.None
-                && settings.Format != ExportFormat.RawHex
-                && settings.Format != ExportFormat.RawBinary
-                && settings.Format != ExportFormat.MicroPython
-                && settings.Format != ExportFormat.LiquidCrystalChar
-                && settings.Format != ExportFormat.FlipperCompressedBitmap
-                && settings.Format != ExportFormat.FlipperCanvasIcon;
+                && IsCompressionSupported(settings.Format);
 
             var emitData = new List<byte[]>();
             int uncompressedFrameSize = frameData.FirstOrDefault()?.Length ?? 0;
@@ -259,6 +254,30 @@ namespace Hexprite.Services
                     ExportFormat.FlipperCanvasIcon       => BuildFlipperCanvasIcon(data, name, outputWidth, outputHeight, settings, hexFmt, cancellationToken),
                     _                                    => string.Empty,
                 };
+
+                if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames && settings.IncludeDimensionConstants)
+                {
+                    string upper = name.ToUpperInvariant();
+                    string cHeight16 = $"const uint16_t {upper}_HEIGHT = {outputHeight};";
+                    string cHeight8  = $"const uint8_t {upper}_HEIGHT = {outputHeight};";
+                    string pyHeight  = $"{upper}_HEIGHT = {outputHeight}";
+
+                    if (coreOutput.Contains(cHeight16, StringComparison.Ordinal))
+                    {
+                        string replacement = $"{cHeight16}\nconst uint16_t {upper}_FRAME_WIDTH  = {width};\nconst uint16_t {upper}_FRAME_HEIGHT = {height};\nconst uint16_t {upper}_FRAMES       = {numFrames};";
+                        coreOutput = coreOutput.Replace(cHeight16, replacement, StringComparison.Ordinal);
+                    }
+                    else if (coreOutput.Contains(cHeight8, StringComparison.Ordinal))
+                    {
+                        string replacement = $"{cHeight8}\nconst uint8_t {upper}_FRAME_WIDTH  = {width};\nconst uint8_t {upper}_FRAME_HEIGHT = {height};\nconst uint8_t {upper}_FRAMES       = {numFrames};";
+                        coreOutput = coreOutput.Replace(cHeight8, replacement, StringComparison.Ordinal);
+                    }
+                    else if (coreOutput.Contains(pyHeight, StringComparison.Ordinal))
+                    {
+                        string replacement = $"{pyHeight}\n{upper}_FRAME_WIDTH  = {width}\n{upper}_FRAME_HEIGHT = {height}\n{upper}_FRAMES       = {numFrames}";
+                        coreOutput = coreOutput.Replace(pyHeight, replacement, StringComparison.Ordinal);
+                    }
+                }
 
                 // Append delays array for flattened sprite sheets, and for ArrayOfFrames when
                 // compression is active (the uncompressed ArrayOfFrames case is handled by the
@@ -1035,6 +1054,15 @@ namespace Hexprite.Services
             }
             sb.Append("};");
 
+            if (frameDelays != null && frameDelays.Exists(d => d != 1))
+            {
+                sb.AppendLine();
+                sb.AppendLine();
+                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {string.Join(", ", frameDelays.Select(d => cfg.UppercaseHex ? HexUpper[Math.Clamp(d, 0, 255)] : HexLower[Math.Clamp(d, 0, 255)]))}");
+                sb.Append("};");
+            }
+
             return sb.ToString();
         }
 
@@ -1098,6 +1126,15 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  {name}_xbm_frame_{i},");
             }
             sb.Append("};");
+
+            if (frameDelays != null && frameDelays.Exists(d => d != 1))
+            {
+                sb.AppendLine();
+                sb.AppendLine();
+                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  {string.Join(", ", frameDelays.Select(d => cfg.UppercaseHex ? HexUpper[Math.Clamp(d, 0, 255)] : HexLower[Math.Clamp(d, 0, 255)]))}");
+                sb.Append("};");
+            }
 
             return sb.ToString();
         }
@@ -1657,16 +1694,16 @@ namespace Hexprite.Services
 
             // Size constants
             sb.AppendLine();
-            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint16_t {NAME}_COMPRESSED_SIZE   = {compSize};");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint16_t {NAME}_UNCOMPRESSED_SIZE = {uncompressedFrameSize};");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint32_t {NAME}_COMPRESSED_SIZE   = {compSize};");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint32_t {NAME}_UNCOMPRESSED_SIZE = {uncompressedFrameSize};");
 
             if (isAnimation)
             {
-                sb.Append(CultureInfo.InvariantCulture, $"const uint16_t {NAME}_FRAME_SIZES[] = {{ ");
+                sb.Append(CultureInfo.InvariantCulture, $"const uint32_t {NAME}_FRAME_SIZES[] = {{ ");
                 sb.AppendJoin(", ", compressedFrames.Select(f => f.Length));
                 sb.AppendLine(" };");
 
-                sb.Append(CultureInfo.InvariantCulture, $"const uint16_t {NAME}_FRAME_OFFSETS[] = {{ ");
+                sb.Append(CultureInfo.InvariantCulture, $"const uint32_t {NAME}_FRAME_OFFSETS[] = {{ ");
                 int offset = 0;
                 var offsets = new List<int>();
                 foreach (var f in compressedFrames)
@@ -1955,6 +1992,21 @@ namespace Hexprite.Services
                 return charCount * 8;
             }
 
+            if (settings.Format == ExportFormat.Indexed2D)
+            {
+                if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames)
+                {
+                    uncompressedFrameSize = outputWidth * outputHeight;
+                    totalUncompressed = uncompressedFrameSize;
+                }
+                else
+                {
+                    uncompressedFrameSize = width * height;
+                    totalUncompressed = uncompressedFrameSize * numFrames;
+                }
+                return totalUncompressed;
+            }
+
             if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames)
             {
                 uncompressedFrameSize = outputHeight * BytesPerRow(outputWidth);
@@ -1968,9 +2020,7 @@ namespace Hexprite.Services
 
             bool compressionActive = compression != null
                 && settings.Compression != CompressionMode.None
-                && settings.Format != ExportFormat.RawHex
-                && settings.Format != ExportFormat.RawBinary
-                && settings.Format != ExportFormat.MicroPython;
+                && IsCompressionSupported(settings.Format);
 
             if (!compressionActive)
             {
@@ -1979,10 +2029,15 @@ namespace Hexprite.Services
 
             int totalCompressed = 0;
             bool anyFrameFailedToCompress = false;
+            bool isLsbFirst = settings.Format == ExportFormat.U8g2DrawXBM
+                || settings.Format == ExportFormat.FlipperXbm
+                || settings.Format == ExportFormat.FlipperCompressedBitmap
+                || settings.Format == ExportFormat.FlipperCanvasIcon;
+
             foreach (var frame in frames)
             {
-                byte[] data = BuildByteArray(frame, outputWidth, outputHeight, settings.Format == ExportFormat.U8g2DrawXBM,
-isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transparent);
+                byte[] data = BuildByteArray(frame, outputWidth, outputHeight, isLsbFirst,
+                    isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transparent);
                 var compressed = compression!.Compress(data, settings.Compression);
                 if (ReferenceEquals(compressed, data))
                     anyFrameFailedToCompress = true;
@@ -1994,6 +2049,19 @@ isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transpare
 
             return totalCompressed < totalUncompressed ? totalCompressed : totalUncompressed;
         }
+
+        /// <summary>
+        /// Indicates whether compression is supported for the specified export format.
+        /// Formats like Raw, MicroPython, LiquidCrystalChar, and Flipper standalone bitmaps/icons
+        /// do not support the C decompression wrapper.
+        /// </summary>
+        public static bool IsCompressionSupported(ExportFormat format) =>
+            format != ExportFormat.RawHex &&
+            format != ExportFormat.RawBinary &&
+            format != ExportFormat.MicroPython &&
+            format != ExportFormat.LiquidCrystalChar &&
+            format != ExportFormat.FlipperCompressedBitmap &&
+            format != ExportFormat.FlipperCanvasIcon;
 
         // ── Name sanitiser ────────────────────────────────────────────────────
 
@@ -2663,12 +2731,8 @@ isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transpare
             return sb.ToString();
         }
 
-        private static string FormatLiquidCrystalByte(byte b, bool useHex, bool uppercaseHex)
+        private static string FormatLiquidCrystalByte(byte b)
         {
-            if (useHex)
-            {
-                return uppercaseHex ? $"0x{b:X2}" : $"0x{b:x2}";
-            }
             return "B" + Convert.ToString(b & 0x1F, 2).PadLeft(5, '0');
         }
 
@@ -2697,7 +2761,7 @@ isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transpare
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 byte b = (y < data.Length) ? data[y] : (byte)0;
-                string formattedByte = FormatLiquidCrystalByte(b, settings.Format == ExportFormat.RawHex, settings.UppercaseHex);
+                string formattedByte = FormatLiquidCrystalByte(b);
                 sb.Append("  ");
                 sb.Append(formattedByte);
                 if (y < 7) sb.Append(',');
@@ -2753,7 +2817,7 @@ isFloating: false, floatingPixels: null, 0, 0, 0, 0, FloatingPasteMode.Transpare
                 for (int y = 0; y < 8; y++)
                 {
                     byte b = (y < data.Length) ? data[y] : (byte)0;
-                    string formattedByte = FormatLiquidCrystalByte(b, settings.Format == ExportFormat.RawHex, settings.UppercaseHex);
+                    string formattedByte = FormatLiquidCrystalByte(b);
                     sb.Append("  ");
                     sb.Append(formattedByte);
                     if (y < 7) sb.Append(',');

@@ -105,5 +105,76 @@ namespace Hexprite.Tests
 
             Assert.Contains("TestFont_41[] = {", code);
         }
+
+        [Fact]
+        public void GenerateCode_AdafruitGfx_NonContiguousGlyphs_EmitsAllSlotsInRange()
+        {
+            // BUG-CG-07: When Glyphs has gaps (e.g. 65 'A' and 67 'C', missing 66 'B'),
+            // Adafruit GFX requires GFXglyph array to contain all entries in [FirstChar..LastChar]
+            // so c - first indexing works correctly.
+            var service = new FontCodeGeneratorService();
+            var doc = new FontDocument
+            {
+                CellHeight = 8,
+                MaxCellWidth = 8,
+                FirstChar = 65,
+                LastChar = 67,
+                FontName = "TestFont",
+                Glyphs =
+                [
+                    new GlyphState { CodePoint = 65, Width = 8, Height = 8, Pixels = new bool[64], XAdvance = 8 },
+                    new GlyphState { CodePoint = 67, Width = 8, Height = 8, Pixels = new bool[64], XAdvance = 8 },
+                ]
+            };
+
+            var settings = new FontExportSettings
+            {
+                Format = FontExportFormat.AdafruitGfx,
+                FontName = "TestFont",
+                IncludeMetricComments = true,
+            };
+
+            string code = service.GenerateCode(doc, settings);
+
+            // Should have 3 entries in TestFontGlyphs for 65 ('A'), 66 ('B' - placeholder), 67 ('C')
+            Assert.Contains("0x41 'A'", code);
+            Assert.Contains("0x42 'B'", code);
+            Assert.Contains("0x43 'C'", code);
+        }
+
+        [Fact]
+        public void GenerateCode_RawCArray_NonContiguousGlyphs_EmitsAllSlotsInRange()
+        {
+            // BUG-CG-07: Raw C Array bitmaps array requires all entries in [FirstChar..LastChar]
+            var service = new FontCodeGeneratorService();
+            var doc = new FontDocument
+            {
+                CellHeight = 8,
+                MaxCellWidth = 8,
+                FirstChar = 65,
+                LastChar = 67,
+                FontName = "TestFont",
+                Glyphs =
+                [
+                    new GlyphState { CodePoint = 65, Width = 8, Height = 8, Pixels = new bool[64], XAdvance = 8 },
+                    new GlyphState { CodePoint = 67, Width = 8, Height = 8, Pixels = new bool[64], XAdvance = 8 },
+                ]
+            };
+
+            var settings = new FontExportSettings
+            {
+                Format = FontExportFormat.RawCArray,
+                FontName = "TestFont",
+                IncludeMetricComments = true,
+            };
+
+            string code = service.GenerateCode(doc, settings);
+
+            // Should have 3 entries in TestFont_bitmaps
+            Assert.Contains("TestFont_41", code);
+            Assert.Contains("TestFont_42", code);
+            Assert.Contains("TestFont_43", code);
+        }
     }
 }
+
