@@ -82,7 +82,7 @@ namespace Hexprite.ViewModels
         public ExportFormat ExportFormat
         {
             get => _exportSettings.Format;
-            set => SetExportSetting(() => _exportSettings.Format, v => _exportSettings.Format = v, nameof(ExportFormat), value, [nameof(IsCommaSeparatorEnabled), nameof(IsCompressionVisible), nameof(IsArduinoSketchExportable)]);
+            set => SetExportSetting(() => _exportSettings.Format, v => _exportSettings.Format = v, nameof(ExportFormat), value, [nameof(IsCommaSeparatorEnabled), nameof(IsCompressionVisible), nameof(IsArduinoSketchExportable), nameof(IsTimingModeVisible)]);
         }
 
         public bool IsCommaSeparatorEnabled => ExportFormat == ExportFormat.RawHex || ExportFormat == ExportFormat.RawBinary;
@@ -92,6 +92,14 @@ namespace Hexprite.ViewModels
                             ExportFormat.U8g2DrawBitmap or
                             ExportFormat.U8g2DrawXBM or
                             ExportFormat.LiquidCrystalChar;
+
+        public bool IsTimingModeVisible => IsAnimationEnabled && IsArduinoSketchExportable;
+
+        public AnimationTimingMode TimingMode
+        {
+            get => _exportSettings.TimingMode;
+            set => SetExportSetting(() => _exportSettings.TimingMode, v => _exportSettings.TimingMode = v, nameof(TimingMode), value);
+        }
 
         public string SpriteName
         {
@@ -442,6 +450,8 @@ namespace Hexprite.ViewModels
             OnPropertyChanged(nameof(IncludeRowComments));
             OnPropertyChanged(nameof(IncludeArraySize));
             OnPropertyChanged(nameof(GenerateFullSketch));
+            OnPropertyChanged(nameof(TimingMode));
+            OnPropertyChanged(nameof(IsTimingModeVisible));
             OnPropertyChanged(nameof(Compression));
             OnPropertyChanged(nameof(IsCompressionVisible));
             OnPropertyChanged(nameof(IsArduinoSketchExportable));

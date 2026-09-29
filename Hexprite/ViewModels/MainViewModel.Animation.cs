@@ -389,6 +389,7 @@ namespace Hexprite.ViewModels
                     BatchFrameOperationCommand?.NotifyCanExecuteChanged();
                     SelectAllFramesCommand?.NotifyCanExecuteChanged();
                     SelectActiveFrameOnlyCommand?.NotifyCanExecuteChanged();
+                    OnPropertyChanged(nameof(IsTimingModeVisible));
                 }
             }
         }
