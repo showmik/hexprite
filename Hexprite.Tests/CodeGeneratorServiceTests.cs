@@ -1976,5 +1976,54 @@ const uint8_t anim[2][16] = {
         string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
         Assert.DoesNotContain("delay(", loopCode);
     }
+
+    [Theory]
+    [InlineData(ExportFormat.U8g2DrawBitmap)]
+    [InlineData(ExportFormat.U8g2DrawXBM)]
+    public void GenerateSketch_U8g2_NonBlockingMillis_EmitsMillisStateMachine(ExportFormat format)
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[64], new bool[64] };
+        var settings = new ExportSettings
+        {
+            Format = format,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            FrameRateFps = 10,
+            SpriteName = "u8g2Anim"
+        };
+
+        string sketch = service.GenerateSketch(frames, 8, 8, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("millis()", sketch);
+        Assert.Contains("static unsigned long lastFrameTime = 0;", sketch);
+        Assert.Contains("static int currentFrame = 0;", sketch);
+        Assert.Contains("currentFrame = (currentFrame + 1) % 2;", sketch);
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("delay(", loopCode);
+    }
+
+    [Fact]
+    public void GenerateSketch_LiquidCrystalChar_NonBlockingMillis_EmitsMillisLoop()
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[40], new bool[40] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.LiquidCrystalChar,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            FrameRateFps = 5,
+            SpriteName = "lcdIcon"
+        };
+
+        string sketch = service.GenerateSketch(frames, 5, 8, settings, false, null, 0, 0, 0, 0);
+
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.Contains("millis()", loopCode);
+        Assert.DoesNotContain("delay(", loopCode);
+    }
 }
 

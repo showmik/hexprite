@@ -2463,7 +2463,62 @@ namespace Hexprite.Services
             if (isAnimation)
             {
 
-                if (compressionActive)
+                if (cfg.TimingMode == AnimationTimingMode.NonBlockingMillis)
+                {
+                    sb.AppendLine("  static unsigned long lastFrameTime = 0;");
+                    sb.AppendLine("  static int currentFrame = 0;");
+                    sb.AppendLine("  unsigned long now = millis();");
+                    sb.AppendLine();
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = (1000UL / {upperName}_FPS) * {upperName}_DELAYS[currentFrame];");
+                        sb.AppendLine("  if (now - lastFrameTime >= frameDuration) {");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000 / {upperName}_FPS)) {{");
+                    }
+                    sb.AppendLine("    lastFrameTime = now;");
+                    sb.AppendLine("    u8g2.clearBuffer();");
+
+                    if (compressionActive)
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    {decodeFn}(&{name}[{upperName}_FRAME_OFFSETS[currentFrame]], {upperName}_FRAME_SIZES[currentFrame], buffer, sizeof(buffer));");
+                        if (isXbm)
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBM(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, buffer);");
+                        else
+                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, buffer);"));
+                    }
+                    else if (cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames)
+                    {
+                        if (isXbm)
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name}[currentFrame]);");
+                        else
+                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}[currentFrame]);"));
+                    }
+                    else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                    {
+                        int frameBytes = height * BytesPerRow(width);
+                        if (isXbm)
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);");
+                        else
+                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);"));
+                    }
+                    else
+                    {
+                        // Horizontal sprite sheet
+                        if (isXbm)
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
+                        else
+                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                    }
+
+                    sb.AppendLine("    u8g2.sendBuffer();");
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};"));
+                    sb.AppendLine("  }");
+                }
+                else if (compressionActive)
                 {
                     sb.AppendLine(CultureInfo.InvariantCulture, $"  uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
