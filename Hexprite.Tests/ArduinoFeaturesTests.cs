@@ -355,6 +355,7 @@ public sealed class ArduinoFeaturesTests
             SpriteName = "heartAnim",
             ExportAsAnimation = true,
             GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
             IncludeUsageComment = true,
             IncludeDimensionConstants = true,
             FrameRateFps = 10,
@@ -374,6 +375,35 @@ public sealed class ArduinoFeaturesTests
         Assert.Contains("lcd.setCursor(15, 0);", code);
         Assert.Contains("lcd.write((byte)0);", code);
         Assert.Contains("replace lcd.init()/backlight() with lcd.begin(16, 2);", code);
+    }
+
+    [Fact]
+    public void ExportFormat_LiquidCrystalChar_Animation_WithBlockingDelay_EmitsDelayLoop()
+    {
+        // Arrange
+        int w = 5, h = 8;
+        bool[] frame0 = new bool[w * h];
+        bool[] frame1 = new bool[w * h];
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.LiquidCrystalChar,
+            SpriteName = "blockChar",
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.BlockingDelay,
+            FrameRateFps = 10,
+        };
+
+        // Act
+        string code = _codeGen.GenerateCode(
+            [frame0, frame1], w, h, settings,
+            isFloating: false, floatingPixels: null, 0, 0, 0, 0);
+
+        // Assert
+        string loopCode = code[code.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.Contains("for (int i = 0; i < 2; i++) {", loopCode);
+        Assert.Contains("delay(1000 / 10);", loopCode);
     }
 
     [Fact]

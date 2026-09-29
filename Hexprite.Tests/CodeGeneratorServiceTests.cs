@@ -2025,5 +2025,77 @@ const uint8_t anim[2][16] = {
         Assert.Contains("millis()", loopCode);
         Assert.DoesNotContain("delay(", loopCode);
     }
+
+    [Fact]
+    public void GenerateSketch_LiquidCrystalChar_BlockingDelay_EmitsDelayLoop()
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[40], new bool[40] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.LiquidCrystalChar,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.BlockingDelay,
+            FrameRateFps = 5,
+            SpriteName = "lcdBlockIcon"
+        };
+
+        string sketch = service.GenerateSketch(frames, 5, 8, settings, false, null, 0, 0, 0, 0);
+
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.Contains("for (int i = 0; i < 2; i++) {", loopCode);
+        Assert.Contains("delay(1000 / 5);", loopCode);
+        Assert.DoesNotContain("millis()", loopCode);
+    }
+
+    [Fact]
+    public void GenerateSketch_AdafruitGfx_NonBlockingMillis_CompressedRle_EmitsBufferInsideCondition()
+    {
+        var service = new CodeGeneratorService(new Hexprite.Services.Compression.CompressionService());
+        var frames = new List<bool[]> { new bool[64], new bool[64] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            Compression = CompressionMode.Rle,
+            FrameRateFps = 10,
+            SpriteName = "compAnim"
+        };
+
+        string sketch = service.GenerateSketch(frames, 8, 8, settings, false, null, 0, 0, 0, 0);
+
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.Contains("millis()", loopCode);
+        Assert.Contains("uint8_t buffer[COMPANIM_UNCOMPRESSED_SIZE];", loopCode);
+        Assert.Contains("hexprite_rle_decode(&compAnim[COMPANIM_FRAME_OFFSETS[currentFrame]]", loopCode);
+        Assert.DoesNotContain("delay(", loopCode);
+    }
+
+    [Fact]
+    public void GenerateSketch_AdafruitGfx_NonBlockingMillis_VerticalSpriteSheet_EmitsFrameOffset()
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[64], new bool[64] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.VerticalSpriteSheet,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            FrameRateFps = 10,
+            SpriteName = "vertAnim"
+        };
+
+        string sketch = service.GenerateSketch(frames, 8, 8, settings, false, null, 0, 0, 0, 0);
+
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.Contains("millis()", loopCode);
+        Assert.Contains("&vertAnim[currentFrame * 8]", loopCode);
+        Assert.DoesNotContain("delay(", loopCode);
+    }
 }
 
