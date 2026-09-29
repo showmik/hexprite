@@ -133,6 +133,18 @@
                             </ComboBox>
                         </StackPanel>
 
+                        <!-- Animation Timing (conditional) -->
+                        <StackPanel x:Name="PanelTimingMode" Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
+                            <TextBlock Text="Timing" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="CboTimingMode"
+                                      Style="{StaticResource ModernComboBoxStyle}"
+                                      Height="26" Width="145"
+                                      SelectionChanged="CboTimingMode_SelectionChanged">
+                                <ComboBoxItem Content="Blocking (delay)" Tag="BlockingDelay"/>
+                                <ComboBoxItem Content="Non-blocking (millis)" Tag="NonBlockingMillis"/>
+                            </ComboBox>
+                        </StackPanel>
+
                         <!-- Bytes per line -->
                         <StackPanel Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
                             <TextBlock Text="Bytes/line" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>

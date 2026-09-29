@@ -138,6 +138,10 @@ namespace Hexprite.Views
                 case nameof(MainViewModel.IsCompressionVisible):
                     Dispatcher.BeginInvoke(SyncCompressionCombo);
                     break;
+                case nameof(MainViewModel.TimingMode):
+                case nameof(MainViewModel.IsTimingModeVisible):
+                    Dispatcher.BeginInvoke(SyncTimingModeCombo);
+                    break;
                 case nameof(MainViewModel.SpriteName):
                     Dispatcher.BeginInvoke(UpdateTitle);
                     break;
@@ -292,6 +296,7 @@ namespace Hexprite.Views
         {
             SyncFormatCombo();
             SyncCompressionCombo();
+            SyncTimingModeCombo();
             SyncBplChip();
             SyncHexCaseChip();
             SyncFullSketchCheck();
@@ -332,6 +337,8 @@ namespace Hexprite.Views
                 }
             }
             PanelCompression.Visibility = _vm.IsCompressionVisible ? Visibility.Visible : Visibility.Collapsed;
+            if (PanelTimingMode != null)
+                PanelTimingMode.Visibility = _vm.IsTimingModeVisible ? Visibility.Visible : Visibility.Collapsed;
             _suppressSettingsChange = false;
             UpdateTitle();
         }
@@ -345,6 +352,8 @@ namespace Hexprite.Views
                 {
                     _vm.ExportFormat = fmt;
                     PanelCompression.Visibility = _vm.IsCompressionVisible ? Visibility.Visible : Visibility.Collapsed;
+                    if (PanelTimingMode != null)
+                        PanelTimingMode.Visibility = _vm.IsTimingModeVisible ? Visibility.Visible : Visibility.Collapsed;
                 }
             }
         }
@@ -372,6 +381,24 @@ namespace Hexprite.Views
             {
                 if (Enum.TryParse<CompressionMode>(tag, out var mode))
                     _vm.Compression = mode;
+            }
+        }
+
+        private void SyncTimingModeCombo()
+        {
+            if (PanelTimingMode == null || CboTimingMode == null || _vm == null) return;
+            _suppressSettingsChange = true;
+            PanelTimingMode.Visibility = _vm.IsTimingModeVisible ? Visibility.Visible : Visibility.Collapsed;
+            CboTimingMode.SelectedIndex = (int)_vm.TimingMode;
+            _suppressSettingsChange = false;
+        }
+
+        private void CboTimingMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressSettingsChange || _vm == null) return;
+            if (CboTimingMode.SelectedIndex >= 0)
+            {
+                _vm.TimingMode = (AnimationTimingMode)CboTimingMode.SelectedIndex;
             }
         }
 

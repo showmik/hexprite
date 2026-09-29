@@ -808,6 +808,22 @@
                                         <ComboBoxItem Content="Horizontal Sprite Sheet (wide)"/>
                                     </ComboBox>
 
+                                    <!-- Animation timing -->
+                                    <TextBlock Text="Animation timing"
+                                               Foreground="{DynamicResource Brush.Text.Muted}"
+                                               FontSize="10" FontWeight="SemiBold"
+                                               Margin="0,0,0,4"
+                                               Visibility="{Binding IsTimingModeVisible, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <ComboBox x:Name="CboAnimationTiming"
+                                              Style="{StaticResource ModernComboBoxStyle}"
+                                              Height="26"
+                                              Margin="0,0,0,12"
+                                              SelectedIndex="{Binding TimingMode}"
+                                              Visibility="{Binding IsTimingModeVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <ComboBoxItem Content="Blocking (delay)"/>
+                                        <ComboBoxItem Content="Non-blocking (millis)"/>
+                                    </ComboBox>
+
                                     <!-- Sprite name -->
                                     <TextBlock Text="Variable / sprite name"
                                                Foreground="{DynamicResource Brush.Text.Muted}"
