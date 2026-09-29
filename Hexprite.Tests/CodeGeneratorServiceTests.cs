@@ -853,6 +853,34 @@ public sealed partial class CodeGeneratorServiceTests
         Assert.Contains("delay(1000 / SHEETANIM_FPS);", sketch);
     }
 
+    [Theory]
+    [InlineData(AnimationExportLayout.HorizontalSpriteSheet)]
+    [InlineData(AnimationExportLayout.VerticalSpriteSheet)]
+    public void GenerateSketch_SpriteSheet_AnimatesAllFrames(AnimationExportLayout layout)
+    {
+        bool[] frameA = new bool[64];
+        bool[] frameB = new bool[64];
+        frameA[0] = true;
+        frameB[63] = true;
+
+        var svc = new CodeGeneratorService();
+        var settings = MinimalExport(s =>
+        {
+            s.Format = ExportFormat.AdafruitGfx;
+            s.SpriteName = "sheetAnim";
+            s.ExportAsAnimation = true;
+            s.AnimationLayout = layout;
+            s.FrameRateFps = 10;
+        });
+
+        string sketch = svc.GenerateSketch(
+            new System.Collections.Generic.List<bool[]> { frameA, frameB },
+            8, 8, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("for (int i = 0; i < 2; i++) {", sketch);
+        Assert.Contains("delay(1000 / SHEETANIM_FPS);", sketch);
+    }
+
     [Fact]
     public void GenerateSketch_U8g2DrawBitmap_GeneratesValidU8g2Sketch()
     {

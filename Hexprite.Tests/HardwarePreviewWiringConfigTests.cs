@@ -726,6 +726,22 @@ namespace Hexprite.Tests
         }
 
         [Fact]
+        public void GenerateArduinoSketch_Uses32BitPacketSizeAndDimensionBoundsCheck()
+        {
+            var config = new HardwarePreviewWiringConfig
+            {
+                BoardPreset = "ESP32 DevKit",
+                InterfaceType = "I2C",
+                DisplayModel = "SSD1306 128x64"
+            };
+
+            string sketch = HardwarePreviewSketchGenerator.GenerateArduinoSketch(config, 115200);
+
+            Assert.Contains("uint32_t dataSize = ((uint32_t)(w + 7) / 8) * (uint32_t)h;", sketch);
+            Assert.Contains("totalPacketSize > (uint32_t)MAX_BUFFER || w == 0 || h == 0", sketch);
+        }
+
+        [Fact]
         public void Validation_ST7920WithI2C_ReturnsError()
         {
             var config = new HardwarePreviewWiringConfig

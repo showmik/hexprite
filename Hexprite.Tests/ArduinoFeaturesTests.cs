@@ -87,6 +87,36 @@ public sealed class ArduinoFeaturesTests
         Assert.Contains("lcd.createChar(i, heartAnim_frames[i])", code);
     }
 
+    [Theory]
+    [InlineData(AnimationExportLayout.HorizontalSpriteSheet)]
+    [InlineData(AnimationExportLayout.VerticalSpriteSheet)]
+    public void ExportFormat_LiquidCrystalChar_MultiFrame_WithSpriteSheetLayout_PreservesAllFrames(AnimationExportLayout layout)
+    {
+        // Arrange
+        int w = 5, h = 8;
+        bool[] frame0 = new bool[w * h];
+        bool[] frame1 = new bool[w * h];
+        frame0[0] = true;
+        frame1[w * h - 1] = true;
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.LiquidCrystalChar,
+            SpriteName = "heartAnim",
+            ExportAsAnimation = true,
+            AnimationLayout = layout,
+            IncludeUsageComment = true,
+        };
+
+        // Act
+        string code = _codeGen.GenerateCode([frame0, frame1], w, h, settings, isFloating: false, floatingPixels: null, 0, 0, 0, 0);
+
+        // Assert
+        Assert.Contains("byte heartAnim_0[8] = {", code);
+        Assert.Contains("byte heartAnim_1[8] = {", code);
+        Assert.Contains("byte* const heartAnim_frames[2] = {", code);
+    }
+
     [Fact]
     public void ExportFormat_LiquidCrystalChar_FullSketch_GeneratesWorkingI2CLcdSketch()
     {

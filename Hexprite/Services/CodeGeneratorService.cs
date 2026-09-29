@@ -137,7 +137,7 @@ namespace Hexprite.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (isAnimation)
+            if (isAnimation && settings.Format != ExportFormat.LiquidCrystalChar)
             {
                 (frames, outputWidth, outputHeight) = FlattenAnimationFrames(
                     frames, width, height, settings.AnimationLayout, numFrames, cancellationToken);
@@ -209,7 +209,8 @@ namespace Hexprite.Services
 
             // ── Build format output ──────────────────────────────────────────
             string coreOutput;
-            bool useAnimationBuilder = isAnimation && !compressionActive && settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames;
+            bool useAnimationBuilder = isAnimation && !compressionActive &&
+                (settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames || settings.Format == ExportFormat.LiquidCrystalChar);
 
             if (useAnimationBuilder)
             {
@@ -1977,7 +1978,7 @@ namespace Hexprite.Services
             int outputHeight = height;
             int numFrames = frames.Count;
 
-            if (isAnimation)
+            if (isAnimation && settings.Format != ExportFormat.LiquidCrystalChar)
             {
                 (frames, outputWidth, outputHeight) = FlattenAnimationFrames(
                     frames, width, height, settings.AnimationLayout, numFrames);
@@ -2264,9 +2265,16 @@ namespace Hexprite.Services
 
             if (isAnimation)
             {
+                string frameW = cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames || compressionActive
+                    ? $"{upperName}_WIDTH"
+                    : $"{upperName}_FRAME_WIDTH";
+                string frameH = cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames || compressionActive
+                    ? $"{upperName}_HEIGHT"
+                    : $"{upperName}_FRAME_HEIGHT";
+
                 sb.AppendLine("  // Center sprite on display");
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t x = (int16_t)max(0, ((int)SCREEN_WIDTH - (int){upperName}_WIDTH) / 2);");
-                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t y = (int16_t)max(0, ((int)SCREEN_HEIGHT - (int){upperName}_HEIGHT) / 2);");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t x = (int16_t)max(0, ((int)SCREEN_WIDTH - (int){frameW}) / 2);");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t y = (int16_t)max(0, ((int)SCREEN_HEIGHT - (int){frameH}) / 2);");
                 sb.AppendLine();
 
                 if (compressionActive)
@@ -2303,13 +2311,39 @@ namespace Hexprite.Services
                     }
                     sb.AppendLine("  }");
                 }
+                else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                {
+                    int frameBytes = height * BytesPerRow(width);
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
+                    sb.AppendLine("    display.clearDisplay();");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x, y, &{name}[i * {frameBytes}], {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, SSD1306_WHITE);");
+                    sb.AppendLine("    display.display();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
+                    }
+                    sb.AppendLine("  }");
+                }
                 else
                 {
-                    // Sprite sheet
-                    sb.AppendLine("  display.clearDisplay();");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"  display.drawBitmap(x, y, {name}, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
-                    sb.AppendLine("  display.display();");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
+                    // Horizontal sprite sheet
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
+                    sb.AppendLine("    display.clearDisplay();");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x - (i * {upperName}_FRAME_WIDTH), y, {name}, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                    sb.AppendLine("    display.display();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
+                    }
+                    sb.AppendLine("  }");
                 }
             }
             else
@@ -2366,12 +2400,20 @@ namespace Hexprite.Services
             sb.AppendLine("}");
             sb.AppendLine();
             sb.AppendLine("void loop() {");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t x = (int16_t)max(0, ((int)u8g2.getDisplayWidth() - (int){upperName}_WIDTH) / 2);");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t y = (int16_t)max(0, ((int)u8g2.getDisplayHeight() - (int){upperName}_HEIGHT) / 2);");
+            string frameW = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+                ? $"{upperName}_FRAME_WIDTH"
+                : $"{upperName}_WIDTH";
+            string frameH = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+                ? $"{upperName}_FRAME_HEIGHT"
+                : $"{upperName}_HEIGHT";
+
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t x = (int16_t)max(0, ((int)u8g2.getDisplayWidth() - (int){frameW}) / 2);");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t y = (int16_t)max(0, ((int)u8g2.getDisplayHeight() - (int){frameH}) / 2);");
             sb.AppendLine();
 
             if (isAnimation)
             {
+
                 if (compressionActive)
                 {
                     sb.AppendLine(CultureInfo.InvariantCulture, $"  uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
@@ -2404,16 +2446,37 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
                 }
+                else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                {
+                    int frameBytes = height * BytesPerRow(width);
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
+                    sb.AppendLine("    u8g2.clearBuffer();");
+                    if (isXbm)
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, &{name}[i * {frameBytes}]);");
+                    else
+                        sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {upperName}_FRAME_HEIGHT, &{name}[i * {frameBytes}]);"));
+                    sb.AppendLine("    u8g2.sendBuffer();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                    else
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
+                    sb.AppendLine("  }");
+                }
                 else
                 {
-                    // Sprite sheet
-                    sb.AppendLine("  u8g2.clearBuffer();");
+                    // Horizontal sprite sheet
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
+                    sb.AppendLine("    u8g2.clearBuffer();");
                     if (isXbm)
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (i * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
                     else
-                        sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
-                    sb.AppendLine("  u8g2.sendBuffer();");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
+                        sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (i * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                    sb.AppendLine("    u8g2.sendBuffer();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                    else
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
+                    sb.AppendLine("  }");
                 }
             }
             else
@@ -2475,8 +2538,15 @@ namespace Hexprite.Services
             sb.AppendLine();
             sb.AppendLine("# ─── Main Program ─────────────────────────────────────────────────────────────");
             sb.AppendLine();
-            sb.AppendLine(CultureInfo.InvariantCulture, $"x = max(0, (SCREEN_WIDTH - {upperName}_WIDTH) // 2)");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"y = max(0, (SCREEN_HEIGHT - {upperName}_HEIGHT) // 2)");
+            string frameW = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+                ? $"{upperName}_FRAME_WIDTH"
+                : $"{upperName}_WIDTH";
+            string frameH = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+                ? $"{upperName}_FRAME_HEIGHT"
+                : $"{upperName}_HEIGHT";
+
+            sb.AppendLine(CultureInfo.InvariantCulture, $"x = max(0, (SCREEN_WIDTH - {frameW}) // 2)");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"y = max(0, (SCREEN_HEIGHT - {frameH}) // 2)");
             sb.AppendLine();
 
             if (isAnimation)
@@ -2498,15 +2568,42 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"        time.sleep_ms(1000 // {upperName}_FPS)");
                     }
                 }
+                else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                {
+                    int frameBytes = height * BytesPerRow(width);
+                    sb.AppendLine("while True:");
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    for i in range({numFrames}):"));
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"        frame = memoryview({name})[i * {frameBytes}:(i + 1) * {frameBytes}]");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"        fb = framebuf.FrameBuffer(frame, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, framebuf.MONO_HLSB, (({upperName}_FRAME_WIDTH + 7) // 8) * 8)");
+                    sb.AppendLine("        oled.fill(0)");
+                    sb.AppendLine("        oled.blit(fb, x, y)");
+                    sb.AppendLine("        oled.show()");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"        time.sleep_ms(int((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]))");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"        time.sleep_ms(1000 // {upperName}_FPS)");
+                    }
+                }
                 else
                 {
-                    // Sprite sheet
+                    // Horizontal sprite sheet
                     sb.AppendLine(CultureInfo.InvariantCulture, $"fb = framebuf.FrameBuffer({name}, {upperName}_WIDTH, {upperName}_HEIGHT, framebuf.MONO_HLSB, (({upperName}_WIDTH + 7) // 8) * 8)");
-                    sb.AppendLine("oled.fill(0)");
-                    sb.AppendLine("oled.blit(fb, x, y)");
-                    sb.AppendLine("oled.show()");
                     sb.AppendLine("while True:");
-                    sb.AppendLine("    time.sleep(1)");
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    for i in range({numFrames}):"));
+                    sb.AppendLine("        oled.fill(0)");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"        oled.blit(fb, x - (i * {upperName}_FRAME_WIDTH), y)");
+                    sb.AppendLine("        oled.show()");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"        time.sleep_ms(int((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]))");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"        time.sleep_ms(1000 // {upperName}_FPS)");
+                    }
                 }
             }
             else

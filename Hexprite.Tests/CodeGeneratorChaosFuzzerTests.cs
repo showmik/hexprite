@@ -36,9 +36,10 @@ namespace Hexprite.Tests
                     frames.Add(pixels);
                 }
 
+                var allFormats = Enum.GetValues<ExportFormat>();
                 var settings = new ExportSettings
                 {
-                    Format = (ExportFormat)random.Next(0, 11),
+                    Format = allFormats[random.Next(allFormats.Length)],
                     SpriteName = $"TestVar_{random.Next()}",
                     IncludeUsageComment = random.Next(2) == 0,
                     IncludeDimensionConstants = random.Next(2) == 0,
