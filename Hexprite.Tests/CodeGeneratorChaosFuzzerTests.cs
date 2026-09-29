@@ -43,7 +43,11 @@ namespace Hexprite.Tests
                     SpriteName = $"TestVar_{random.Next()}",
                     IncludeUsageComment = random.Next(2) == 0,
                     IncludeDimensionConstants = random.Next(2) == 0,
-                    Compression = (CompressionMode)random.Next(0, 3)
+                    Compression = (CompressionMode)random.Next(0, 3),
+                    TimingMode = (AnimationTimingMode)random.Next(0, 2),
+                    GenerateFullSketch = random.Next(2) == 0,
+                    ExportAsAnimation = random.Next(2) == 0,
+                    AnimationLayout = (AnimationExportLayout)random.Next(0, 3)
                 };
 
                 try
