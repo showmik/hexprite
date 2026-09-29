@@ -8,7 +8,7 @@ namespace Hexprite.Core
         /// <summary>const uint8_t PROGMEM name[] = {...}; — Adafruit GFX, MSB first</summary>
         AdafruitGfx,
 
-        /// <summary>const uint8_t U8X8_PROGMEM name[] = {...}; — u8g2 drawBitmap, MSB first</summary>
+        /// <summary>const uint8_t name[] = {...}; — u8g2 drawBitmap (RAM buffer), MSB first</summary>
         U8g2DrawBitmap,
 
         /// <summary>XBM layout: PROGMEM, LSB first (leftmost pixel → bit 0)</summary>

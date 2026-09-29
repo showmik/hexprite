@@ -392,11 +392,11 @@ namespace Hexprite.Tests
         }
 
         [Theory]
-        [InlineData(16, 12, "-4")]  // Descender depth = 16 - 12 = 4 -> base_line = -(4)
-        [InlineData(8, 6, "-2")]    // Descender depth = 8 - 6 = 2 -> base_line = -(2)
-        [InlineData(10, 10, "-0")]  // Baseline sits at bottom -> base_line = -(0)
-        [InlineData(12, 15, "-0")]  // Baseline sits beyond cell height -> clamped to 0 -> -(0)
-        public void Challenge_Lvgl_NegativeDescenderDepthBaselineCalculation(int cellHeight, int baseline, string expectedDescenderOffset)
+        [InlineData(16, 12, "4")]  // Descender depth = 16 - 12 = 4 -> base_line = 4
+        [InlineData(8, 6, "2")]    // Descender depth = 8 - 6 = 2 -> base_line = 2
+        [InlineData(10, 10, "0")]  // Baseline sits at bottom -> base_line = 0
+        [InlineData(12, 15, "0")]  // Baseline sits beyond cell height -> clamped to 0 -> 0
+        public void Challenge_Lvgl_DescenderDepthBaselineCalculation(int cellHeight, int baseline, string expectedDescenderOffset)
         {
             var service = new FontCodeGeneratorService();
             var doc = CreateTestDoc(65, 65, 8, cellHeight, baseline: baseline);
@@ -409,8 +409,8 @@ namespace Hexprite.Tests
 
             string code = service.GenerateCode(doc, settings);
 
-            // In LVGL: .base_line = -({Math.Max(0, doc.CellHeight - doc.Baseline)})
-            string expectedToken = $".base_line = -({expectedDescenderOffset.TrimStart('-')}),";
+            // In LVGL: .base_line = {Math.Max(0, doc.CellHeight - doc.Baseline)},
+            string expectedToken = $".base_line = {expectedDescenderOffset},";
             Assert.Contains(expectedToken, code);
         }
 

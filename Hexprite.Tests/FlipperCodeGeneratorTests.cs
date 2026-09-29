@@ -99,6 +99,53 @@ namespace Hexprite.Tests
         }
 
         [Fact]
+        public void GenerateCode_FlipperCanvasIconAnimation_EmitsExternIconDeclarationAndLifecycleComments()
+        {
+            var frame1 = new bool[100];
+            var frame2 = new bool[100];
+
+            var settings = new ExportSettings
+            {
+                Format = ExportFormat.FlipperCanvasIcon,
+                IncludeUsageComment = true,
+                IncludeDimensionConstants = true,
+                SpriteName = "BatteryIcon",
+            };
+
+            string code = _generator.GenerateCode(new List<bool[]> { frame1, frame2 }, 10, 10, settings, true, null, 0, 0, 0, 0);
+
+            // In Flipper Zero firmware, animations are typed as extern const Icon A_... (not IconAnimation)
+            Assert.Contains("extern const Icon A_BatteryIcon_10x10;", code);
+            Assert.DoesNotContain("extern const IconAnimation A_", code);
+            Assert.Contains("icon_animation_alloc", code);
+            Assert.Contains("canvas_draw_icon_animation", code);
+        }
+
+        [Fact]
+        public void GenerateCode_FlipperCanvasIconAnimation_FullFapSketch_ManagesIconAnimationLifecycle()
+        {
+            var frame1 = new bool[100];
+            var frame2 = new bool[100];
+
+            var settings = new ExportSettings
+            {
+                Format = ExportFormat.FlipperCanvasIcon,
+                GenerateFullSketch = true,
+                SpriteName = "BatteryIcon",
+            };
+
+            string code = _generator.GenerateCode(new List<bool[]> { frame1, frame2 }, 10, 10, settings, true, null, 0, 0, 0, 0);
+
+            Assert.Contains("#include <gui/icon_animation.h>", code);
+            Assert.Contains("IconAnimation* icon_anim;", code);
+            Assert.Contains("app.icon_anim = icon_animation_alloc(&A_BatteryIcon_10x10);", code);
+            Assert.Contains("icon_animation_start(app.icon_anim);", code);
+            Assert.Contains("canvas_draw_icon_animation(canvas, x, y, app->icon_anim);", code);
+            Assert.Contains("icon_animation_stop(app.icon_anim);", code);
+            Assert.Contains("icon_animation_free(app.icon_anim);", code);
+        }
+
+        [Fact]
         public void GenerateCode_FlipperFapSketch_EmitsCompleteApp()
         {
             var pixels = new bool[16 * 16];

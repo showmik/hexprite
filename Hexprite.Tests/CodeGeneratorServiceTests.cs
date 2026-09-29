@@ -102,7 +102,7 @@ public sealed partial class CodeGeneratorServiceTests
 
     [Theory]
     [InlineData(ExportFormat.AdafruitGfx, "PROGMEM", "0x80")]
-    [InlineData(ExportFormat.U8g2DrawBitmap, "U8X8_PROGMEM", "0x80")]
+    [InlineData(ExportFormat.U8g2DrawBitmap, "const uint8_t testSprite[]", "0x80")]
     [InlineData(ExportFormat.U8g2DrawXBM, "PROGMEM", "0x01")]
     [InlineData(ExportFormat.PlainCArray, "const uint8_t testSprite[]", "0x80")]
     [InlineData(ExportFormat.MicroPython, "bytearray", "0x80")]
@@ -121,6 +121,49 @@ public sealed partial class CodeGeneratorServiceTests
         string code = svc.GenerateCode(new System.Collections.Generic.List<bool[]> { state.Pixels }, state.Width, state.Height, settings, false, null, 0, 0, 0, 0);
         Assert.Contains(expectedSubstring, code);
         Assert.Contains(expectedFirstByte, code);
+    }
+
+    [Fact]
+    public void GenerateCode_U8g2DrawBitmap_DoesNotEmitProgmemKeyword_BecauseLibraryExpectsRamPointer()
+    {
+        var state = new SpriteState(16, 16);
+        var svc = new CodeGeneratorService();
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.U8g2DrawBitmap,
+            SpriteName = "u8g2RamTest",
+            IncludeUsageComment = true,
+        };
+
+        string singleCode = svc.GenerateCode(new List<bool[]> { state.Pixels }, state.Width, state.Height, settings, false, null, 0, 0, 0, 0);
+        // U8g2 drawBitmap() dereferences RAM directly (*b). On AVR it cannot read PROGMEM.
+        Assert.DoesNotContain("U8X8_PROGMEM", singleCode);
+        Assert.DoesNotContain("PROGMEM u8g2RamTest", singleCode);
+        Assert.Contains("const uint8_t u8g2RamTest[]", singleCode);
+        Assert.Contains("u8g2.drawBitmap", singleCode);
+
+        // Also verify multi-frame animation
+        string animCode = svc.GenerateCode(new List<bool[]> { state.Pixels, state.Pixels }, state.Width, state.Height, settings, true, null, 0, 0, 0, 0);
+        Assert.DoesNotContain("U8X8_PROGMEM", animCode);
+        Assert.DoesNotContain("PROGMEM u8g2RamTest", animCode);
+        Assert.Contains("const uint8_t u8g2RamTest[", animCode);
+    }
+
+    [Fact]
+    public void GenerateCode_MicroPythonAnimation_UsageCommentIncludesCalculatedStride()
+    {
+        var frame1 = new bool[10 * 8]; // 10px width requires stride=16 (2 bytes per row)
+        var frame2 = new bool[10 * 8];
+        var svc = new CodeGeneratorService();
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.MicroPython,
+            SpriteName = "walkAnim",
+            IncludeUsageComment = true,
+        };
+
+        string code = svc.GenerateCode(new List<bool[]> { frame1, frame2 }, 10, 8, settings, true, null, 0, 0, 0, 0);
+        Assert.Contains("framebuf.FrameBuffer(walkAnim[i], 10, 8, framebuf.MONO_HLSB, 16)", code);
     }
 
     [Fact]

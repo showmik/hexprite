@@ -422,7 +422,7 @@ namespace Hexprite.Services
 
             if (cfg.IncludeUsageComment)
             {
-                sb.AppendLine(CultureInfo.InvariantCulture, $"// u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {height}, {name});");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"// u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {height}, {name}); // Note: drawBitmap expects RAM buffer; for PROGMEM use drawXBMP");
             }
 
             if (cfg.IncludeDimensionConstants)
@@ -432,7 +432,7 @@ namespace Hexprite.Services
             }
 
             string arraySize = cfg.IncludeArraySize ? data.Length.ToString(CultureInfo.InvariantCulture) : "";
-            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t U8X8_PROGMEM {name}[{arraySize}] = {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name}[{arraySize}] = {{");
             AppendByteBody(sb, data, width, cfg, b => cfg.UppercaseHex ? HexUpper[b] : HexLower[b], rowPrefix: "  ", cancellationToken);
             sb.Append("};");
 
@@ -708,7 +708,7 @@ namespace Hexprite.Services
             string arraySize = cfg.IncludeArraySize
                 ? string.Create(CultureInfo.InvariantCulture, $"{frames.Count}][{bytesPerFrame}")
                 : string.Create(CultureInfo.InvariantCulture, $"][{bytesPerFrame}");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t U8X8_PROGMEM {name}[{arraySize}] = {{");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name}[{arraySize}] = {{");
 
             for (int i = 0; i < frames.Count; i++)
             {
@@ -726,7 +726,7 @@ namespace Hexprite.Services
             if (frameDelays != null && frameDelays.Exists(d => d != 1))
             {
                 sb.AppendLine();
-                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t U8X8_PROGMEM {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  {string.Join(", ", frameDelays.Select(d => cfg.UppercaseHex ? HexUpper[Math.Clamp(d, 0, 255)] : HexLower[Math.Clamp(d, 0, 255)]))}");
                 sb.AppendLine("};");
             }
@@ -865,9 +865,10 @@ namespace Hexprite.Services
 
             if (cfg.IncludeUsageComment)
             {
+                int stride = ((width + 7) / 8) * 8;
                 sb.AppendLine(CultureInfo.InvariantCulture, $"# Animation: {frames.Count} frames @ {fps} FPS");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"# for i in range({frames.Count}):");
-                sb.AppendLine(CultureInfo.InvariantCulture, $"#     fb = framebuf.FrameBuffer({name}[i], {width}, {height}, framebuf.MONO_HLSB)");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"#     fb = framebuf.FrameBuffer({name}[i], {width}, {height}, framebuf.MONO_HLSB, {stride})");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"#     display.blit(fb, x, y)");
                 if (frameDelays != null && frameDelays.Exists(d => d != 1))
                 {
@@ -1256,7 +1257,9 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"// 1. Save animated icon frames in: icons/A_{name}_{width}x{height}/");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"// 2. In application.fam: fap_icon_assets=\"icons\"");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"// 3. In C source: #include \"{name}_icons.h\"");
-                sb.AppendLine(CultureInfo.InvariantCulture, $"// 4. In ViewPort callback: canvas_draw_icon_animation(canvas, x, y, &A_{name}_{width}x{height});");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"// 4. In app init: IconAnimation* icon_anim = icon_animation_alloc(&A_{name}_{width}x{height}); icon_animation_start(icon_anim);");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"// 5. In ViewPort callback: canvas_draw_icon_animation(canvas, x, y, icon_anim);");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"// 6. In app exit: icon_animation_stop(icon_anim); icon_animation_free(icon_anim);");
             }
 
             if (cfg.IncludeDimensionConstants)
@@ -1268,7 +1271,7 @@ namespace Hexprite.Services
             }
 
             sb.AppendLine(CultureInfo.InvariantCulture, $"// Animated Icon asset declaration for {name}");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"extern const IconAnimation A_{name}_{width}x{height};");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"extern const Icon A_{name}_{width}x{height};");
 
             return sb.ToString();
         }
@@ -3041,6 +3044,10 @@ namespace Hexprite.Services
             sb.AppendLine("#include <gui/gui.h>");
             sb.AppendLine("#include <input/input.h>");
             sb.AppendLine("#include <gui/canvas.h>");
+            if (isAnimation && cfg.Format == ExportFormat.FlipperCanvasIcon)
+            {
+                sb.AppendLine("#include <gui/icon_animation.h>");
+            }
             sb.AppendLine();
             sb.AppendLine("// ─── Sprite Data ─────────────────────────────────────────────────────────────");
             sb.AppendLine();
@@ -3054,7 +3061,14 @@ namespace Hexprite.Services
             sb.AppendLine("    FuriMessageQueue* event_queue;");
             if (isAnimation)
             {
-                sb.AppendLine("    uint32_t current_frame;");
+                if (cfg.Format == ExportFormat.FlipperCanvasIcon)
+                {
+                    sb.AppendLine("    IconAnimation* icon_anim;");
+                }
+                else
+                {
+                    sb.AppendLine("    uint32_t current_frame;");
+                }
             }
             sb.AppendLine(CultureInfo.InvariantCulture, $"}} {name}App;");
             sb.AppendLine();
@@ -3092,7 +3106,7 @@ namespace Hexprite.Services
             else
             {
                 if (isAnimation)
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    canvas_draw_icon_animation(canvas, x, y, &A_{name}_{width}x{height});");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    canvas_draw_icon_animation(canvas, x, y, app->icon_anim);");
                 else
                     sb.AppendLine(CultureInfo.InvariantCulture, $"    canvas_draw_icon(canvas, x, y, &I_{name}_{width}x{height});");
             }
@@ -3110,7 +3124,15 @@ namespace Hexprite.Services
             sb.AppendLine("    app.event_queue = furi_message_queue_alloc(8, sizeof(InputEvent));");
             if (isAnimation)
             {
-                sb.AppendLine("    app.current_frame = 0;");
+                if (cfg.Format == ExportFormat.FlipperCanvasIcon)
+                {
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    app.icon_anim = icon_animation_alloc(&A_{name}_{width}x{height});");
+                    sb.AppendLine("    icon_animation_start(app.icon_anim);");
+                }
+                else
+                {
+                    sb.AppendLine("    app.current_frame = 0;");
+                }
             }
             sb.AppendLine("    app.view_port = view_port_alloc();");
             sb.AppendLine("    view_port_draw_callback_set(app.view_port, render_callback, &app);");
@@ -3124,7 +3146,7 @@ namespace Hexprite.Services
             sb.AppendLine("        if(event.type == InputTypeShort && event.key == InputKeyBack) {");
             sb.AppendLine("            break;");
             sb.AppendLine("        }");
-            if (isAnimation)
+            if (isAnimation && cfg.Format != ExportFormat.FlipperCanvasIcon)
             {
                 sb.AppendLine("        if(event.type == InputTypeShort) {");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"            app.current_frame = (app.current_frame + 1) % {upperName}_FRAMES;");
@@ -3133,6 +3155,11 @@ namespace Hexprite.Services
             sb.AppendLine("        view_port_update(app.view_port);");
             sb.AppendLine("    }");
             sb.AppendLine();
+            if (isAnimation && cfg.Format == ExportFormat.FlipperCanvasIcon)
+            {
+                sb.AppendLine("    icon_animation_stop(app.icon_anim);");
+                sb.AppendLine("    icon_animation_free(app.icon_anim);");
+            }
             sb.AppendLine("    gui_remove_view_port(app.gui, app.view_port);");
             sb.AppendLine("    view_port_free(app.view_port);");
             sb.AppendLine("    furi_record_close(RECORD_GUI);");

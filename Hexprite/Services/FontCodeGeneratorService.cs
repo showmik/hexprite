@@ -548,7 +548,7 @@ namespace Hexprite.Services
             sb.AppendLine("  .get_glyph_dsc = lv_font_get_glyph_dsc_fmt_txt,");
             sb.AppendLine("  .get_glyph_bitmap = lv_font_get_bitmap_fmt_txt,");
             sb.AppendLine(CultureInfo.InvariantCulture, $"  .line_height = {doc.YAdvance},");
-            sb.AppendLine(CultureInfo.InvariantCulture, $"  .base_line = -({Math.Max(0, doc.CellHeight - doc.Baseline)}),");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  .base_line = {Math.Max(0, doc.CellHeight - doc.Baseline)},");
             sb.AppendLine("  .subpx = LV_FONT_SUBPX_NONE,");
             sb.AppendLine("  .underline_position = -1,");
             sb.AppendLine("  .underline_thickness = 1,");

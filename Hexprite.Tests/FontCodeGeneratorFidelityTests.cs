@@ -447,9 +447,9 @@ namespace Hexprite.Tests
             Assert.Contains("0xFF, 0x80", code);
             // Verify FORMAT0_TINY for contiguous range
             Assert.Contains("LV_FONT_FMT_TXT_CMAP_FORMAT0_TINY", code);
-            Assert.Contains(".unicode_list = NULL", code);
-            // Verify negative base_line format
-            Assert.Contains(".base_line = -(", code);
+            // Verify positive base_line format per LVGL specification (distance from bottom of line to baseline)
+            Assert.Contains(".base_line = ", code);
+            Assert.DoesNotContain(".base_line = -", code);
         }
 
         [Fact]
