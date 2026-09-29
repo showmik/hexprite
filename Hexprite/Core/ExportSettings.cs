@@ -9,6 +9,12 @@ namespace Hexprite.Core
         HorizontalSpriteSheet,
     }
 
+    public enum AnimationTimingMode
+    {
+        BlockingDelay,
+        NonBlockingMillis,
+    }
+
     /// <summary>
     /// All user-configurable options that control how the export code is generated.
     /// Persisted inside the .hexp file so the last-used settings are remembered
@@ -78,6 +84,12 @@ namespace Hexprite.Core
 
         /// <summary>Frames per second for animation playback in generated code.</summary>
         public int FrameRateFps { get; set; } = 12;
+
+        /// <summary>
+        /// Controls whether animation playback in generated sketches uses blocking delay()
+        /// or a non-blocking millis() timer state machine.
+        /// </summary>
+        public AnimationTimingMode TimingMode { get; set; } = AnimationTimingMode.BlockingDelay;
 
         // ── Code structure ────────────────────────────────────────────────────
 

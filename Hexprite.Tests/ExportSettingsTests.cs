@@ -93,4 +93,29 @@ namespace Hexprite.Tests;
         Assert.Equal(original.IncludeRowComments, restored.IncludeRowComments);
         Assert.Equal(original.IncludeArraySize, restored.IncludeArraySize);
     }
+
+    [Fact]
+    public void ExportSettings_DefaultTimingMode_IsBlockingDelay()
+    {
+        var settings = new ExportSettings();
+        Assert.Equal(AnimationTimingMode.BlockingDelay, settings.TimingMode);
+    }
+
+    [Fact]
+    public void ExportSettings_Clone_PreservesTimingMode()
+    {
+        var settings = new ExportSettings { TimingMode = AnimationTimingMode.NonBlockingMillis };
+        var clone = settings.Clone();
+        Assert.Equal(AnimationTimingMode.NonBlockingMillis, clone.TimingMode);
+    }
+
+    [Fact]
+    public void ExportSettings_Serialization_PreservesTimingMode()
+    {
+        var settings = new ExportSettings { TimingMode = AnimationTimingMode.NonBlockingMillis };
+        string json = System.Text.Json.JsonSerializer.Serialize(settings);
+        var deserialized = System.Text.Json.JsonSerializer.Deserialize<ExportSettings>(json);
+        Assert.NotNull(deserialized);
+        Assert.Equal(AnimationTimingMode.NonBlockingMillis, deserialized.TimingMode);
+    }
 }
