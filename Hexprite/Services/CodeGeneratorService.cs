@@ -2277,7 +2277,56 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t y = (int16_t)max(0, ((int)SCREEN_HEIGHT - (int){frameH}) / 2);");
                 sb.AppendLine();
 
-                if (compressionActive)
+                if (cfg.TimingMode == AnimationTimingMode.NonBlockingMillis)
+                {
+                    sb.AppendLine("  static unsigned long lastFrameTime = 0;");
+                    sb.AppendLine("  static int currentFrame = 0;");
+                    sb.AppendLine("  unsigned long now = millis();");
+                    sb.AppendLine();
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = (1000UL / {upperName}_FPS) * {upperName}_DELAYS[currentFrame];");
+                        sb.AppendLine("  if (now - lastFrameTime >= frameDuration) {");
+                    }
+                    else
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000 / {upperName}_FPS)) {{");
+                    }
+                    sb.AppendLine("    lastFrameTime = now;");
+
+                    if (compressionActive)
+                    {
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    {decodeFn}(&{name}[{upperName}_FRAME_OFFSETS[currentFrame]], {upperName}_FRAME_SIZES[currentFrame], buffer, sizeof(buffer));");
+                        sb.AppendLine("    display.clearDisplay();");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x, y, buffer, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                        sb.AppendLine("    display.display();");
+                    }
+                    else if (cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames)
+                    {
+                        sb.AppendLine("    display.clearDisplay();");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x, y, {name}[currentFrame], {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                        sb.AppendLine("    display.display();");
+                    }
+                    else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                    {
+                        int frameBytes = height * BytesPerRow(width);
+                        sb.AppendLine("    display.clearDisplay();");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x, y, &{name}[currentFrame * {frameBytes}], {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, SSD1306_WHITE);");
+                        sb.AppendLine("    display.display();");
+                    }
+                    else
+                    {
+                        // Horizontal sprite sheet
+                        sb.AppendLine("    display.clearDisplay();");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {name}, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                        sb.AppendLine("    display.display();");
+                    }
+
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};"));
+                    sb.AppendLine("  }");
+                }
+                else if (compressionActive)
                 {
                     sb.AppendLine(CultureInfo.InvariantCulture, $"  uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));

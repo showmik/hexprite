@@ -1924,5 +1924,57 @@ const uint8_t anim[2][16] = {
         Assert.Contains("SHEET_SPRITE_FRAME_HEIGHT", code);
         Assert.Contains("SHEET_SPRITE_FRAMES", code);
     }
+
+    [Fact]
+    public void GenerateSketch_AdafruitGfx_NonBlockingMillis_EmitsMillisStateMachine()
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[64], new bool[64] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            FrameRateFps = 10,
+            SpriteName = "faceAnim"
+        };
+
+        string sketch = service.GenerateSketch(frames, 8, 8, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("millis()", sketch);
+        Assert.Contains("static unsigned long lastFrameTime = 0;", sketch);
+        Assert.Contains("static int currentFrame = 0;", sketch);
+        Assert.Contains("if (now - lastFrameTime >=", sketch);
+        Assert.Contains("currentFrame = (currentFrame + 1) % 2;", sketch);
+        Assert.DoesNotContain("delay(1000 / FACEANIM_FPS);", sketch);
+    }
+
+    [Fact]
+    public void GenerateSketch_AdafruitGfx_NonBlockingMillis_WithCustomDelays_EmitsDelayArrayMultiplier()
+    {
+        var service = new CodeGeneratorService();
+        var frames = new List<bool[]> { new bool[64], new bool[64] };
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            FrameRateFps = 10,
+            SpriteName = "blinkAnim"
+        };
+
+        string sketch = service.GenerateSketch(frames, 8, 8, settings, false, null, 0, 0, 0, 0,
+            FloatingPasteMode.Transparent, frameDelays: new List<int> { 1, 3 });
+
+        Assert.Contains("BLINKANIM_DELAYS[currentFrame]", sketch);
+        Assert.Contains("static unsigned long lastFrameTime = 0;", sketch);
+        Assert.Contains("millis()", sketch);
+        Assert.Contains("currentFrame = (currentFrame + 1) % 2;", sketch);
+
+        string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
+        Assert.DoesNotContain("delay(", loopCode);
+    }
 }
 
