@@ -29,13 +29,17 @@ public static class DeltaAnimationOptimizer
         IReadOnlyList<bool[]> frames,
         int width,
         int height,
+        bool lsbFirst = false,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(frames);
+        if (width <= 0 || height <= 0 || width > 255 || height > 255)
+            throw new ArgumentOutOfRangeException(nameof(width), "Dimensions must be between 1 and 255 for delta frame optimization.");
+
         if (frames.Count == 0)
             return new OptimizedDeltaAnimation([], []);
 
-        byte[] keyframe0 = PackBitmap(frames[0], 0, 0, width, height, width);
+        byte[] keyframe0 = PackBitmap(frames[0], 0, 0, width, height, width, lsbFirst);
 
         if (frames.Count == 1)
             return new OptimizedDeltaAnimation(keyframe0, []);
@@ -54,7 +58,7 @@ public static class DeltaAnimationOptimizer
             var patches = new List<DeltaPatch>(mergedBoxes.Count);
             foreach (var box in mergedBoxes)
             {
-                byte[] data = PackBitmap(curr, box.MinX, box.MinY, box.Width, box.Height, width);
+                byte[] data = PackBitmap(curr, box.MinX, box.MinY, box.Width, box.Height, width, lsbFirst);
                 patches.Add(new DeltaPatch(box.MinX, box.MinY, box.Width, box.Height, data));
             }
 
@@ -187,7 +191,7 @@ public static class DeltaAnimationOptimizer
         return boxes;
     }
 
-    private static byte[] PackBitmap(bool[] fullFrame, int x, int y, int w, int h, int stride)
+    private static byte[] PackBitmap(bool[] fullFrame, int x, int y, int w, int h, int stride, bool lsbFirst = false)
     {
         int bytesPerRow = (w + 7) / 8;
         byte[] buffer = new byte[bytesPerRow * h];
@@ -200,7 +204,7 @@ public static class DeltaAnimationOptimizer
                 if (pixel)
                 {
                     int byteIndex = row * bytesPerRow + (col / 8);
-                    int bitIndex = 7 - (col % 8);
+                    int bitIndex = lsbFirst ? (col % 8) : (7 - (col % 8));
                     buffer[byteIndex] |= (byte)(1 << bitIndex);
                 }
             }

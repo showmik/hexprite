@@ -120,4 +120,61 @@ public sealed class DeltaAnimationOptimizerTests
             Assert.Equal(frames[f], current);
         }
     }
+
+    [Fact]
+    public void Optimize_SingleFrame_ReturnsKeyframeAndEmptyDeltaFrames()
+    {
+        int w = 16, h = 16;
+        bool[] frame0 = new bool[w * h];
+        frame0[0] = true;
+
+        var result = DeltaAnimationOptimizer.Optimize([frame0], w, h);
+
+        Assert.NotNull(result.Keyframe0);
+        Assert.Empty(result.DeltaFrames);
+    }
+
+    [Fact]
+    public void Optimize_InvertedFullFrame_CollapsesToSingleBoundingBox()
+    {
+        int w = 16, h = 16;
+        bool[] frame0 = new bool[w * h];
+        bool[] frame1 = new bool[w * h];
+        for (int i = 0; i < frame1.Length; i++)
+            frame1[i] = true;
+
+        var result = DeltaAnimationOptimizer.Optimize([frame0, frame1], w, h);
+
+        Assert.Single(result.DeltaFrames);
+        Assert.Single(result.DeltaFrames[0].Patches);
+        var patch = result.DeltaFrames[0].Patches[0];
+        Assert.Equal(0, patch.X);
+        Assert.Equal(0, patch.Y);
+        Assert.Equal(w, patch.Width);
+        Assert.Equal(h, patch.Height);
+    }
+
+    [Fact]
+    public void Optimize_DimensionsGreaterThan255_ThrowsArgumentOutOfRangeException()
+    {
+        bool[] frame = new bool[256 * 16];
+        Assert.Throws<System.ArgumentOutOfRangeException>(() =>
+            DeltaAnimationOptimizer.Optimize([frame], 256, 16));
+    }
+
+    [Fact]
+    public void Optimize_LsbFirst_PacksBitsInXbmOrder()
+    {
+        int w = 8, h = 1;
+        // Pixel at col 0 set, col 7 not set
+        bool[] frame = [true, false, false, false, false, false, false, false];
+
+        var msbResult = DeltaAnimationOptimizer.Optimize([frame], w, h, lsbFirst: false);
+        // In MSB-first: pixel 0 is bit 7 (0x80)
+        Assert.Equal(0x80, msbResult.Keyframe0[0]);
+
+        var lsbResult = DeltaAnimationOptimizer.Optimize([frame], w, h, lsbFirst: true);
+        // In LSB-first (XBM): pixel 0 is bit 0 (0x01)
+        Assert.Equal(0x01, lsbResult.Keyframe0[0]);
+    }
 }

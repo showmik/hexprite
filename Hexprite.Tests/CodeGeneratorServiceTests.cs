@@ -2145,11 +2145,11 @@ const uint8_t anim[2][16] = {
 
         string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
 
-        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
-        Assert.Contains("display.drawBitmap(px, py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);", sketch);
+        Assert.Contains("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p)", sketch);
+        Assert.Contains("display.drawBitmap(x + px, y + py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);", sketch);
         Assert.Contains("if (currentFrame == 0) {", sketch);
         Assert.Contains("display.drawBitmap(x, y, deltaSketch_FRAME_0", sketch);
-        Assert.Contains("drawDeltaFrame(&deltaSketch_DELTAS[DELTASKETCH_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &deltaSketch_DELTAS[DELTASKETCH_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
         Assert.Contains("millis()", sketch);
         Assert.DoesNotContain("delay(", sketch);
     }
@@ -2176,13 +2176,13 @@ const uint8_t anim[2][16] = {
 
         string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
 
-        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
+        Assert.Contains("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p)", sketch);
         Assert.Contains("u8g2.setDrawColor(0);", sketch);
-        Assert.Contains("u8g2.drawBox(px, py, pw, ph);", sketch);
+        Assert.Contains("u8g2.drawBox(x + px, y + py, pw, ph);", sketch);
         Assert.Contains("u8g2.setDrawColor(1);", sketch);
-        Assert.Contains("u8g2.drawBitmap(px, py, (pw + 7) / 8, ph, p);", sketch);
+        Assert.Contains("u8g2.drawBitmap(x + px, y + py, (pw + 7) / 8, ph, p);", sketch);
         Assert.Contains("u8g2.sendBuffer();", sketch);
-        Assert.Contains("drawDeltaFrame(&u8g2Delta_DELTAS[U8G2DELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &u8g2Delta_DELTAS[U8G2DELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
     }
 
     [Fact]
@@ -2207,9 +2207,52 @@ const uint8_t anim[2][16] = {
 
         string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
 
-        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
-        Assert.Contains("u8g2.drawXBMP(px, py, pw, ph, p);", sketch);
-        Assert.Contains("drawDeltaFrame(&u8g2XbmDelta_DELTAS[U8G2XBMDELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p)", sketch);
+        Assert.Contains("u8g2.drawXBMP(x + px, y + py, pw, ph, p);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &u8g2XbmDelta_DELTAS[U8G2XBMDELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+    }
+
+    [Fact]
+    public void GenerateCode_DeltaPatches_SingleFrame_FallsBackToStandardExport()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            SpriteName = "singleDelta",
+        };
+
+        string code = service.GenerateCode([f0], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.DoesNotContain("singleDelta_DELTAS[0]", code);
+        Assert.Contains("singleDelta", code);
+    }
+
+    [Fact]
+    public void GenerateCode_DeltaPatches_MicroPython_FallsBackToStandardExport()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+        bool[] f1 = new bool[w * h];
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.MicroPython,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            SpriteName = "pyDelta",
+        };
+
+        string code = service.GenerateCode([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.DoesNotContain("PROGMEM", code);
+        Assert.Contains("bytearray", code);
     }
 }
 

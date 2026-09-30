@@ -210,7 +210,12 @@ namespace Hexprite.Services
 
             // ── Build format output ──────────────────────────────────────────
             string coreOutput;
-            bool isDelta = isAnimation && settings.AnimationLayout == AnimationExportLayout.DeltaPatches;
+            bool isDelta = isAnimation
+                && frames.Count > 1
+                && outputWidth <= 255
+                && outputHeight <= 255
+                && settings.AnimationLayout == AnimationExportLayout.DeltaPatches
+                && IsDeltaPatchesSupported(settings.Format);
             bool useAnimationBuilder = isAnimation && !compressionActive &&
                 (settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames || settings.Format == ExportFormat.LiquidCrystalChar);
 
@@ -603,11 +608,12 @@ namespace Hexprite.Services
         private static string BuildDeltaPatchesAnimation(
             List<bool[]> frames, string name, int width, int height, ExportSettings cfg, string hexFmt, List<int>? frameDelays, System.Threading.CancellationToken cancellationToken = default)
         {
-            if (frames == null || frames.Count == 0) return string.Empty;
+            if (frames == null || frames.Count <= 1) return string.Empty;
             int fps = Math.Max(1, cfg.FrameRateFps);
             var sb = new StringBuilder();
 
-            var opt = DeltaAnimationOptimizer.Optimize(frames, width, height, cancellationToken);
+            bool isXbm = cfg.Format == ExportFormat.U8g2DrawXBM;
+            var opt = DeltaAnimationOptimizer.Optimize(frames, width, height, lsbFirst: isXbm, cancellationToken: cancellationToken);
 
             if (cfg.IncludeUsageComment)
             {
@@ -2137,6 +2143,16 @@ namespace Hexprite.Services
             format != ExportFormat.FlipperCompressedBitmap &&
             format != ExportFormat.FlipperCanvasIcon;
 
+        /// <summary>
+        /// Indicates whether DeltaPatches layout is supported for the specified export format.
+        /// Non-C formats or formats without byte blit helpers fall back to standard layout.
+        /// </summary>
+        public static bool IsDeltaPatchesSupported(ExportFormat format) =>
+            format is ExportFormat.AdafruitGfx or
+                      ExportFormat.U8g2DrawBitmap or
+                      ExportFormat.U8g2DrawXBM or
+                      ExportFormat.PlainCArray;
+
         // ── Name sanitiser ────────────────────────────────────────────────────
 
         /// <summary>C and Python keywords — a sanitised name matching one of these exactly would produce uncompilable/unrunnable generated code.</summary>
@@ -2298,17 +2314,18 @@ namespace Hexprite.Services
             sb.AppendLine();
             sb.AppendLine(coreOutput);
             sb.AppendLine();
-            if (isAnimation && cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+            bool isDelta = isAnimation && numFrames > 1 && width <= 255 && height <= 255 && cfg.AnimationLayout == AnimationExportLayout.DeltaPatches;
+            if (isDelta)
             {
                 sb.AppendLine("// ─── Delta Frame Rendering Helper ──────────────────────────────────────────");
-                sb.AppendLine("void drawDeltaFrame(const uint8_t* p) {");
+                sb.AppendLine("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p) {");
                 sb.AppendLine("  uint8_t numPatches = pgm_read_byte(p++);");
                 sb.AppendLine("  for (uint8_t i = 0; i < numPatches; i++) {");
                 sb.AppendLine("    uint8_t px = pgm_read_byte(p++);");
                 sb.AppendLine("    uint8_t py = pgm_read_byte(p++);");
                 sb.AppendLine("    uint8_t pw = pgm_read_byte(p++);");
                 sb.AppendLine("    uint8_t ph = pgm_read_byte(p++);");
-                sb.AppendLine("    display.drawBitmap(px, py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);");
+                sb.AppendLine("    display.drawBitmap(x + px, y + py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);");
                 sb.AppendLine("    p += ((pw + 7) / 8) * ph;");
                 sb.AppendLine("  }");
                 sb.AppendLine("}");
@@ -2391,13 +2408,13 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x, y, buffer, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
                         sb.AppendLine("    display.display();");
                     }
-                    else if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+                    else if (isDelta)
                     {
                         sb.AppendLine("    if (currentFrame == 0) {");
                         sb.AppendLine("      display.clearDisplay();");
                         sb.AppendLine(CultureInfo.InvariantCulture, $"      display.drawBitmap(x, y, {name}_FRAME_0, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
                         sb.AppendLine("    } else {");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
                         sb.AppendLine("    }");
                         sb.AppendLine("    display.display();");
                     }
@@ -2444,7 +2461,7 @@ namespace Hexprite.Services
                     }
                     sb.AppendLine("  }");
                 }
-                else if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+                else if (isDelta)
                 {
                     sb.AppendLine("  display.clearDisplay();");
                     sb.AppendLine(CultureInfo.InvariantCulture, $"  display.drawBitmap(x, y, {name}_FRAME_0, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
@@ -2459,7 +2476,7 @@ namespace Hexprite.Services
                     }
                     sb.AppendLine();
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames - 1}; i++) {{"));
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
@@ -2570,10 +2587,11 @@ namespace Hexprite.Services
             sb.AppendLine();
             sb.AppendLine(coreOutput);
             sb.AppendLine();
-            if (isAnimation && cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+            bool isDelta = isAnimation && numFrames > 1 && width <= 255 && height <= 255 && cfg.AnimationLayout == AnimationExportLayout.DeltaPatches;
+            if (isDelta)
             {
                 sb.AppendLine("// ─── Delta Frame Rendering Helper ──────────────────────────────────────────");
-                sb.AppendLine("void drawDeltaFrame(const uint8_t* p) {");
+                sb.AppendLine("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p) {");
                 sb.AppendLine("  uint8_t numPatches = pgm_read_byte(p++);");
                 sb.AppendLine("  for (uint8_t i = 0; i < numPatches; i++) {");
                 sb.AppendLine("    uint8_t px = pgm_read_byte(p++);");
@@ -2581,12 +2599,12 @@ namespace Hexprite.Services
                 sb.AppendLine("    uint8_t pw = pgm_read_byte(p++);");
                 sb.AppendLine("    uint8_t ph = pgm_read_byte(p++);");
                 sb.AppendLine("    u8g2.setDrawColor(0);");
-                sb.AppendLine("    u8g2.drawBox(px, py, pw, ph);");
+                sb.AppendLine("    u8g2.drawBox(x + px, y + py, pw, ph);");
                 sb.AppendLine("    u8g2.setDrawColor(1);");
                 if (isXbm)
-                    sb.AppendLine("    u8g2.drawXBMP(px, py, pw, ph, p);");
+                    sb.AppendLine("    u8g2.drawXBMP(x + px, y + py, pw, ph, p);");
                 else
-                    sb.AppendLine("    u8g2.drawBitmap(px, py, (pw + 7) / 8, ph, p);");
+                    sb.AppendLine("    u8g2.drawBitmap(x + px, y + py, (pw + 7) / 8, ph, p);");
                 sb.AppendLine("    p += ((pw + 7) / 8) * ph;");
                 sb.AppendLine("  }");
                 sb.AppendLine("}");
@@ -2630,7 +2648,7 @@ namespace Hexprite.Services
                     }
                     sb.AppendLine("    lastFrameTime = now;");
 
-                    if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+                    if (isDelta)
                     {
                         sb.AppendLine("    if (currentFrame == 0) {");
                         sb.AppendLine("      u8g2.clearBuffer();");
@@ -2639,7 +2657,7 @@ namespace Hexprite.Services
                         else
                             sb.AppendLine(CultureInfo.InvariantCulture, $"      u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}_FRAME_0);");
                         sb.AppendLine("    } else {");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
                         sb.AppendLine("    }");
                         sb.AppendLine("    u8g2.sendBuffer();");
                     }
@@ -2704,7 +2722,7 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
                 }
-                else if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+                else if (isDelta)
                 {
                     sb.AppendLine("  u8g2.clearBuffer();");
                     if (isXbm)
@@ -2718,7 +2736,7 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
                     sb.AppendLine();
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames - 1}; i++) {{"));
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i + 1]);");
