@@ -47,7 +47,7 @@ namespace Hexprite.Tests
                     TimingMode = (AnimationTimingMode)random.Next(0, 2),
                     GenerateFullSketch = random.Next(2) == 0,
                     ExportAsAnimation = random.Next(2) == 0,
-                    AnimationLayout = (AnimationExportLayout)random.Next(0, 3)
+                    AnimationLayout = (AnimationExportLayout)random.Next(0, 4)
                 };
 
                 try
