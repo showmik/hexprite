@@ -2097,5 +2097,61 @@ const uint8_t anim[2][16] = {
         Assert.Contains("&vertAnim[currentFrame * 8]", loopCode);
         Assert.DoesNotContain("delay(", loopCode);
     }
+
+    [Fact]
+    public void GenerateCode_AdafruitGfx_DeltaPatches_EmitsKeyframeAndDeltaArrays()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+        bool[] f1 = new bool[w * h];
+        f1[2 * w + 2] = true; // 1 pixel change
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            SpriteName = "testDelta",
+            FrameRateFps = 20,
+        };
+
+        string code = service.GenerateCode([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("const uint8_t PROGMEM testDelta_FRAME_0[32] = {", code);
+        Assert.Contains("const uint8_t PROGMEM testDelta_DELTAS[", code);
+        Assert.Contains("const uint16_t PROGMEM TESTDELTA_FRAME_OFFSETS[1] = {", code);
+    }
+
+    [Fact]
+    public void GenerateSketch_AdafruitGfx_DeltaPatches_NonBlockingMillis_EmitsDrawDeltaHelperAndStateLoop()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+        bool[] f1 = new bool[w * h];
+        f1[2 * w + 2] = true;
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.AdafruitGfx,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            SpriteName = "deltaSketch",
+            FrameRateFps = 30,
+        };
+
+        string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
+        Assert.Contains("display.drawBitmap(px, py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);", sketch);
+        Assert.Contains("if (currentFrame == 0) {", sketch);
+        Assert.Contains("display.drawBitmap(x, y, deltaSketch_FRAME_0", sketch);
+        Assert.Contains("drawDeltaFrame(&deltaSketch_DELTAS[DELTASKETCH_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("millis()", sketch);
+        Assert.DoesNotContain("delay(", sketch);
+    }
 }
 
