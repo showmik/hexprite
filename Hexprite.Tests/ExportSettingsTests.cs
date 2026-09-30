@@ -118,4 +118,14 @@ namespace Hexprite.Tests;
         Assert.NotNull(deserialized);
         Assert.Equal(AnimationTimingMode.NonBlockingMillis, deserialized.TimingMode);
     }
+
+    [Fact]
+    public void AnimationExportLayout_ContainsDeltaPatchesOption()
+    {
+        var layout = AnimationExportLayout.DeltaPatches;
+        Assert.Equal(3, (int)layout);
+
+        var settings = new ExportSettings { AnimationLayout = AnimationExportLayout.DeltaPatches };
+        Assert.Equal(AnimationExportLayout.DeltaPatches, settings.AnimationLayout);
+    }
 }

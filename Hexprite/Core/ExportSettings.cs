@@ -7,6 +7,7 @@ namespace Hexprite.Core
         ArrayOfFrames,
         VerticalSpriteSheet,
         HorizontalSpriteSheet,
+        DeltaPatches,
     }
 
     public enum AnimationTimingMode
