@@ -806,6 +806,7 @@
                                         <ComboBoxItem Content="Array of frames (pointers)"/>
                                         <ComboBoxItem Content="Vertical Sprite Sheet (tall)"/>
                                         <ComboBoxItem Content="Horizontal Sprite Sheet (wide)"/>
+                                        <ComboBoxItem Content="Delta Patches (Bounding Box)"/>
                                     </ComboBox>
 
                                     <!-- Animation timing -->

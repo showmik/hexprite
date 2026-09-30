@@ -85,5 +85,25 @@ namespace Hexprite.Tests.ViewModels
             vm.IsAnimationEnabled = false;
             Assert.False(vm.IsTimingModeVisible);
         }
+
+        [Fact]
+        public void AnimationLayout_CanSelectDeltaPatches()
+        {
+            var vm = CreateMainViewModel();
+            vm.IsAnimationEnabled = true;
+
+            bool propChanged = false;
+            vm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.AnimationLayout))
+                    propChanged = true;
+            };
+
+            vm.AnimationLayout = AnimationExportLayout.DeltaPatches;
+
+            Assert.True(propChanged);
+            Assert.Equal(AnimationExportLayout.DeltaPatches, vm.AnimationLayout);
+            Assert.Equal(AnimationExportLayout.DeltaPatches, vm.ExportSettings.AnimationLayout);
+        }
     }
 }

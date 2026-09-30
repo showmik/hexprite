@@ -138,6 +138,10 @@ namespace Hexprite.Views
                 case nameof(MainViewModel.IsCompressionVisible):
                     Dispatcher.BeginInvoke(SyncCompressionCombo);
                     break;
+                case nameof(MainViewModel.AnimationLayout):
+                case nameof(MainViewModel.IsAnimationEnabled):
+                    Dispatcher.BeginInvoke(SyncLayoutCombo);
+                    break;
                 case nameof(MainViewModel.TimingMode):
                 case nameof(MainViewModel.IsTimingModeVisible):
                     Dispatcher.BeginInvoke(SyncTimingModeCombo);
@@ -295,6 +299,7 @@ namespace Hexprite.Views
         private void SyncAllSettingsFromViewModel()
         {
             SyncFormatCombo();
+            SyncLayoutCombo();
             SyncCompressionCombo();
             SyncTimingModeCombo();
             SyncBplChip();
@@ -355,6 +360,24 @@ namespace Hexprite.Views
                     if (PanelTimingMode != null)
                         PanelTimingMode.Visibility = _vm.IsTimingModeVisible ? Visibility.Visible : Visibility.Collapsed;
                 }
+            }
+        }
+
+        private void SyncLayoutCombo()
+        {
+            if (PanelAnimationLayout == null || CboLayout == null || _vm == null) return;
+            _suppressSettingsChange = true;
+            PanelAnimationLayout.Visibility = _vm.IsAnimationEnabled ? Visibility.Visible : Visibility.Collapsed;
+            CboLayout.SelectedIndex = (int)_vm.AnimationLayout;
+            _suppressSettingsChange = false;
+        }
+
+        private void CboLayout_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (_suppressSettingsChange || _vm == null) return;
+            if (CboLayout.SelectedIndex >= 0)
+            {
+                _vm.AnimationLayout = (AnimationExportLayout)CboLayout.SelectedIndex;
             }
         }
 

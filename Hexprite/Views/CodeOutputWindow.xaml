@@ -120,6 +120,20 @@
                             </ComboBox>
                         </StackPanel>
 
+                        <!-- Animation Layout (conditional) -->
+                        <StackPanel x:Name="PanelAnimationLayout" Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
+                            <TextBlock Text="Layout" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="CboLayout"
+                                      Style="{StaticResource ModernComboBoxStyle}"
+                                      Height="26" Width="185"
+                                      SelectionChanged="CboLayout_SelectionChanged">
+                                <ComboBoxItem Content="Array of frames (pointers)" Tag="ArrayOfFrames"/>
+                                <ComboBoxItem Content="Vertical Sprite Sheet (tall)" Tag="VerticalSpriteSheet"/>
+                                <ComboBoxItem Content="Horizontal Sprite Sheet (wide)" Tag="HorizontalSpriteSheet"/>
+                                <ComboBoxItem Content="Delta Patches (Bounding Box)" Tag="DeltaPatches"/>
+                            </ComboBox>
+                        </StackPanel>
+
                         <!-- Compression (conditional) -->
                         <StackPanel x:Name="PanelCompression" Orientation="Horizontal" Margin="0,2,14,2" VerticalAlignment="Center">
                             <TextBlock Text="Compression" Foreground="{DynamicResource Brush.Text.Muted}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
