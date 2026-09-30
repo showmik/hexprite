@@ -2153,5 +2153,63 @@ const uint8_t anim[2][16] = {
         Assert.Contains("millis()", sketch);
         Assert.DoesNotContain("delay(", sketch);
     }
+
+    [Fact]
+    public void GenerateSketch_U8g2DrawBitmap_DeltaPatches_EmitsDrawDeltaHelperAndSendBuffer()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+        bool[] f1 = new bool[w * h];
+        f1[2 * w + 2] = true;
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.U8g2DrawBitmap,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            SpriteName = "u8g2Delta",
+            FrameRateFps = 15,
+        };
+
+        string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
+        Assert.Contains("u8g2.setDrawColor(0);", sketch);
+        Assert.Contains("u8g2.drawBox(px, py, pw, ph);", sketch);
+        Assert.Contains("u8g2.setDrawColor(1);", sketch);
+        Assert.Contains("u8g2.drawBitmap(px, py, (pw + 7) / 8, ph, p);", sketch);
+        Assert.Contains("u8g2.sendBuffer();", sketch);
+        Assert.Contains("drawDeltaFrame(&u8g2Delta_DELTAS[U8G2DELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+    }
+
+    [Fact]
+    public void GenerateSketch_U8g2DrawXBM_DeltaPatches_EmitsDrawXBMP()
+    {
+        var service = new CodeGeneratorService();
+        int w = 16, h = 16;
+        bool[] f0 = new bool[w * h];
+        bool[] f1 = new bool[w * h];
+        f1[2 * w + 2] = true;
+
+        var settings = new ExportSettings
+        {
+            Format = ExportFormat.U8g2DrawXBM,
+            ExportAsAnimation = true,
+            AnimationLayout = AnimationExportLayout.DeltaPatches,
+            GenerateFullSketch = true,
+            TimingMode = AnimationTimingMode.NonBlockingMillis,
+            SpriteName = "u8g2XbmDelta",
+            FrameRateFps = 15,
+        };
+
+        string sketch = service.GenerateSketch([f0, f1], w, h, settings, false, null, 0, 0, 0, 0);
+
+        Assert.Contains("void drawDeltaFrame(const uint8_t* p)", sketch);
+        Assert.Contains("u8g2.drawXBMP(px, py, pw, ph, p);", sketch);
+        Assert.Contains("drawDeltaFrame(&u8g2XbmDelta_DELTAS[U8G2XBMDELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+    }
 }
 

@@ -2570,6 +2570,28 @@ namespace Hexprite.Services
             sb.AppendLine();
             sb.AppendLine(coreOutput);
             sb.AppendLine();
+            if (isAnimation && cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+            {
+                sb.AppendLine("// ─── Delta Frame Rendering Helper ──────────────────────────────────────────");
+                sb.AppendLine("void drawDeltaFrame(const uint8_t* p) {");
+                sb.AppendLine("  uint8_t numPatches = pgm_read_byte(p++);");
+                sb.AppendLine("  for (uint8_t i = 0; i < numPatches; i++) {");
+                sb.AppendLine("    uint8_t px = pgm_read_byte(p++);");
+                sb.AppendLine("    uint8_t py = pgm_read_byte(p++);");
+                sb.AppendLine("    uint8_t pw = pgm_read_byte(p++);");
+                sb.AppendLine("    uint8_t ph = pgm_read_byte(p++);");
+                sb.AppendLine("    u8g2.setDrawColor(0);");
+                sb.AppendLine("    u8g2.drawBox(px, py, pw, ph);");
+                sb.AppendLine("    u8g2.setDrawColor(1);");
+                if (isXbm)
+                    sb.AppendLine("    u8g2.drawXBMP(px, py, pw, ph, p);");
+                else
+                    sb.AppendLine("    u8g2.drawBitmap(px, py, (pw + 7) / 8, ph, p);");
+                sb.AppendLine("    p += ((pw + 7) / 8) * ph;");
+                sb.AppendLine("  }");
+                sb.AppendLine("}");
+                sb.AppendLine();
+            }
             sb.AppendLine("// ─── Arduino Setup & Main Loop ───────────────────────────────────────────────");
             sb.AppendLine();
             sb.AppendLine("void setup() {");
@@ -2577,10 +2599,10 @@ namespace Hexprite.Services
             sb.AppendLine("}");
             sb.AppendLine();
             sb.AppendLine("void loop() {");
-            string frameW = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+            string frameW = isAnimation && (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet || cfg.AnimationLayout == AnimationExportLayout.HorizontalSpriteSheet)
                 ? $"{upperName}_FRAME_WIDTH"
                 : $"{upperName}_WIDTH";
-            string frameH = isAnimation && cfg.AnimationLayout != AnimationExportLayout.ArrayOfFrames
+            string frameH = isAnimation && (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet || cfg.AnimationLayout == AnimationExportLayout.HorizontalSpriteSheet)
                 ? $"{upperName}_FRAME_HEIGHT"
                 : $"{upperName}_HEIGHT";
 
@@ -2607,43 +2629,61 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000UL / {upperName}_FPS)) {{");
                     }
                     sb.AppendLine("    lastFrameTime = now;");
-                    sb.AppendLine("    u8g2.clearBuffer();");
 
-                    if (compressionActive)
+                    if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    {decodeFn}(&{name}[{upperName}_FRAME_OFFSETS[currentFrame]], {upperName}_FRAME_SIZES[currentFrame], buffer, sizeof(buffer));");
+                        sb.AppendLine("    if (currentFrame == 0) {");
+                        sb.AppendLine("      u8g2.clearBuffer();");
                         if (isXbm)
-                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBM(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, buffer);");
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"      u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name}_FRAME_0);");
                         else
-                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, buffer);"));
-                    }
-                    else if (cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames)
-                    {
-                        if (isXbm)
-                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name}[currentFrame]);");
-                        else
-                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}[currentFrame]);"));
-                    }
-                    else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
-                    {
-                        int frameHeight = Math.Max(1, height / Math.Max(1, numFrames));
-                        int frameBytes = frameHeight * BytesPerRow(width);
-                        if (isXbm)
-                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);");
-                        else
-                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);"));
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"      u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}_FRAME_0);");
+                        sb.AppendLine("    } else {");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
+                        sb.AppendLine("    }");
+                        sb.AppendLine("    u8g2.sendBuffer();");
                     }
                     else
                     {
-                        // Horizontal sprite sheet
-                        if (isXbm)
-                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
+                        sb.AppendLine("    u8g2.clearBuffer();");
+
+                        if (compressionActive)
+                        {
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    uint8_t buffer[{upperName}_UNCOMPRESSED_SIZE];");
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    {decodeFn}(&{name}[{upperName}_FRAME_OFFSETS[currentFrame]], {upperName}_FRAME_SIZES[currentFrame], buffer, sizeof(buffer));");
+                            if (isXbm)
+                                sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBM(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, buffer);");
+                            else
+                                sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, buffer);"));
+                        }
+                        else if (cfg.AnimationLayout == AnimationExportLayout.ArrayOfFrames)
+                        {
+                            if (isXbm)
+                                sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name}[currentFrame]);");
+                            else
+                                sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}[currentFrame]);"));
+                        }
+                        else if (cfg.AnimationLayout == AnimationExportLayout.VerticalSpriteSheet)
+                        {
+                            int frameHeight = Math.Max(1, height / Math.Max(1, numFrames));
+                            int frameBytes = frameHeight * BytesPerRow(width);
+                            if (isXbm)
+                                sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x, y, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);");
+                            else
+                                sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {upperName}_FRAME_HEIGHT, &{name}[currentFrame * {frameBytes}]);"));
+                        }
                         else
-                            sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                        {
+                            // Horizontal sprite sheet
+                            if (isXbm)
+                                sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
+                            else
+                                sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                        }
+
+                        sb.AppendLine("    u8g2.sendBuffer();");
                     }
 
-                    sb.AppendLine("    u8g2.sendBuffer();");
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};"));
                     sb.AppendLine("  }");
                 }
@@ -2660,6 +2700,28 @@ namespace Hexprite.Services
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                    else
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
+                    sb.AppendLine("  }");
+                }
+                else if (cfg.AnimationLayout == AnimationExportLayout.DeltaPatches)
+                {
+                    sb.AppendLine("  u8g2.clearBuffer();");
+                    if (isXbm)
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  u8g2.drawXBMP(x, y, {upperName}_WIDTH, {upperName}_HEIGHT, {name}_FRAME_0);");
+                    else
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}_FRAME_0);");
+                    sb.AppendLine("  u8g2.sendBuffer();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[0]);");
+                    else
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
+                    sb.AppendLine();
+                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames - 1}; i++) {{"));
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(&{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
+                    sb.AppendLine("    u8g2.sendBuffer();");
+                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i + 1]);");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
