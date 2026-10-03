@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Hexprite.Controllers;
 using Hexprite.Core;
 using Hexprite.Services;
@@ -9,11 +10,22 @@ using Xunit;
 namespace Hexprite.Tests.ViewModels
 {
     [Trait("Category", "Unit")]
-    public class MainViewModelExportTests
+    public class MainViewModelExportTests : IDisposable
     {
+        private readonly string _tempSettingsFile;
+
         public MainViewModelExportTests()
         {
+            _tempSettingsFile = Path.Combine(Path.GetTempPath(), $"mainvm_export_test_{Guid.NewGuid():N}.json");
+            UserPreferencesService.SetCustomSettingsPath(_tempSettingsFile);
             WpfTestHelper.EnsureApplication();
+        }
+
+        public void Dispose()
+        {
+            UserPreferencesService.SetCustomSettingsPath(null);
+            try { if (File.Exists(_tempSettingsFile)) File.Delete(_tempSettingsFile); } catch { }
+            try { if (File.Exists(_tempSettingsFile + ".bak")) File.Delete(_tempSettingsFile + ".bak"); } catch { }
         }
 
         private MainViewModel CreateMainViewModel()
@@ -143,6 +155,54 @@ namespace Hexprite.Tests.ViewModels
             var vm = CreateMainViewModel();
             vm.ExportFormat = ExportFormat.LiquidCrystalChar;
             Assert.False(vm.IsCompressionVisible);
+        }
+
+        [Fact]
+        public void MainViewModel_NewDocument_InheritsUserPreferenceExportSettings()
+        {
+            UserPreferencesService.Update(p =>
+            {
+                p.DefaultExportSettings.Format = ExportFormat.U8g2DrawBitmap;
+                p.DefaultExportSettings.BytesPerLine = 8;
+                p.DefaultExportSettings.UppercaseHex = true;
+            });
+
+            var vm = CreateMainViewModel();
+
+            Assert.Equal(ExportFormat.U8g2DrawBitmap, vm.ExportFormat);
+            Assert.Equal(8, vm.BytesPerLine);
+            Assert.True(vm.UppercaseHex);
+            // Document sprite name must remain isolated
+            Assert.Equal("mySprite", vm.SpriteName);
+        }
+
+        [Fact]
+        public void MainViewModel_ModifyingExportSettings_UpdatesUserPreferencesWithoutMutatingSpriteName()
+        {
+            var vm = CreateMainViewModel();
+            vm.SpriteName = "customShip";
+            vm.ExportFormat = ExportFormat.MicroPython;
+            vm.BytesPerLine = 12;
+
+            var saved = UserPreferencesService.GetDefaultExportSettings();
+            Assert.Equal(ExportFormat.MicroPython, saved.Format);
+            Assert.Equal(12, saved.BytesPerLine);
+            Assert.Equal("mySprite", saved.SpriteName);
+        }
+
+        [Fact]
+        public void MainViewModel_ResetExportSettings_RestoresDefaultsPreservingSpriteName()
+        {
+            var vm = CreateMainViewModel();
+            vm.SpriteName = "keepMyName";
+            vm.ExportFormat = ExportFormat.RawHex;
+            vm.BytesPerLine = 32;
+
+            vm.ResetExportSettingsCommand.Execute(null);
+
+            Assert.Equal(ExportFormat.AdafruitGfx, vm.ExportFormat);
+            Assert.Equal(0, vm.BytesPerLine);
+            Assert.Equal("keepMyName", vm.SpriteName);
         }
     }
 }

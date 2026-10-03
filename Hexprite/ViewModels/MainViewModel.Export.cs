@@ -24,7 +24,7 @@ namespace Hexprite.ViewModels
     public partial class MainViewModel
     {
         // ── Export settings ───────────────────────────────────────────────
-        private ExportSettings _exportSettings = new();
+        private ExportSettings _exportSettings = UserPreferencesService.GetDefaultExportSettings();
         public ExportSettings ExportSettings
         {
             get => _exportSettings;
@@ -75,6 +75,15 @@ namespace Hexprite.ViewModels
                 OnPropertyChanged(propertyName);
                 additionalProperties?.ToList().ForEach(OnPropertyChanged);
                 TriggerDebouncedUpdate();
+                if (propertyName != nameof(SpriteName))
+                {
+                    UserPreferencesService.Update(prefs =>
+                    {
+                        var snapshot = _exportSettings.Clone();
+                        snapshot.SpriteName = "mySprite";
+                        prefs.DefaultExportSettings = snapshot;
+                    });
+                }
             }
         }
 
@@ -458,6 +467,17 @@ namespace Hexprite.ViewModels
             OnPropertyChanged(nameof(IsCompressionVisible));
             OnPropertyChanged(nameof(IsArduinoSketchExportable));
             UpdateTextOutputs();
+        }
+
+        public IRelayCommand ResetExportSettingsCommand => new RelayCommand(ResetExportSettings);
+
+        public void ResetExportSettings()
+        {
+            string currentName = SpriteName;
+            UserPreferencesService.ResetDefaultExportSettings();
+            var defaults = UserPreferencesService.GetDefaultExportSettings();
+            defaults.SpriteName = currentName;
+            ApplyExportSettings(defaults);
         }
 
         /// <summary>
