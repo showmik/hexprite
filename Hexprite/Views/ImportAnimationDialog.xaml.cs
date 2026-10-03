@@ -636,22 +636,8 @@ namespace Hexprite.Views
                     int actualIndex = Math.Min(frameIndex, composited.Count - 1);
                     var frameToPreview = composited[actualIndex];
                     
-                    string tempFile = System.IO.Path.GetTempFileName();
-                    try
-                    {
-                        using (var fs = System.IO.File.OpenWrite(tempFile))
-                        {
-                            var encoder = new PngBitmapEncoder();
-                            encoder.Frames.Add(BitmapFrame.Create(frameToPreview));
-                            encoder.Save(fs);
-                        }
-                        var converted = BitmapToMonochromeConverter.ConvertTo1Bit(tempFile, bitmapSettings);
-                        return (converted, composited);
-                    }
-                    finally
-                    {
-                        if (System.IO.File.Exists(tempFile)) System.IO.File.Delete(tempFile);
-                    }
+                    var converted = BitmapToMonochromeConverter.ConvertBitmapSource(frameToPreview, bitmapSettings);
+                    return (converted, composited);
                 });
 
                 if (token.IsCancellationRequested)

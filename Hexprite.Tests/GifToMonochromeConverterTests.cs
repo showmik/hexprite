@@ -180,6 +180,165 @@ namespace Hexprite.Tests
                 if (File.Exists(tempPath)) File.Delete(tempPath);
             }
         }
+
+        [Fact]
+        public void CompositeGifFrames_ManyLargeFrames_DoesNotThrowOutOfMemory()
+        {
+            int w = 1000;
+            int h = 1000;
+            int frameCount = 100;
+            var frames = new List<BitmapFrame>(frameCount);
+            for (int i = 0; i < frameCount; i++)
+            {
+                var wb = new WriteableBitmap(w, h, 96, 96, PixelFormats.Bgra32, null);
+                frames.Add(BitmapFrame.Create(wb));
+            }
+
+            var result = GifToMonochromeConverter.CompositeGifFrames(frames);
+            Assert.Equal(frameCount, result.Count);
+        }
+
+        [Fact]
+        public void CompositeGifFrames_OverlappingFrames_CompositesAlphaCorrectly()
+        {
+            // Frame 0: 10x10 fully opaque red
+            var wb0 = new WriteableBitmap(10, 10, 96, 96, PixelFormats.Bgra32, null);
+            uint[] px0 = new uint[100];
+            Array.Fill(px0, 0xFFFF0000); // Red, Alpha 255
+            wb0.WritePixels(new System.Windows.Int32Rect(0, 0, 10, 10), px0, 40, 0);
+
+            // Frame 1: 10x10 with left half transparent (0x00000000) and right half blue (0xFF0000FF)
+            var wb1 = new WriteableBitmap(10, 10, 96, 96, PixelFormats.Bgra32, null);
+            uint[] px1 = new uint[100];
+            for (int y = 0; y < 10; y++)
+            {
+                for (int x = 0; x < 10; x++)
+                {
+                    px1[y * 10 + x] = x < 5 ? 0x00000000 : 0xFF0000FF;
+                }
+            }
+            wb1.WritePixels(new System.Windows.Int32Rect(0, 0, 10, 10), px1, 40, 0);
+
+            var frames = new List<BitmapFrame> { BitmapFrame.Create(wb0), BitmapFrame.Create(wb1) };
+            var composited = GifToMonochromeConverter.CompositeGifFrames(frames);
+
+            Assert.Equal(2, composited.Count);
+            
+            // Frame 1 result: left half should still be red (from Frame 0), right half should be blue
+            uint[] resultPixels = new uint[100];
+            composited[1].CopyPixels(resultPixels, 40, 0);
+
+            // Top-left should be red (from frame 0)
+            Assert.Equal(0xFFFF0000, resultPixels[0]);
+            // Top-right should be blue (from frame 1)
+            Assert.Equal(0xFF0000FF, resultPixels[9]);
+        }
+
+        private static BitmapFrame CreateFrameWithMeta(int width, int height, uint color, int left = 0, int top = 0, byte disposal = 0)
+        {
+            var wb = new WriteableBitmap(width, height, 96, 96, PixelFormats.Bgra32, null);
+            uint[] px = new uint[width * height];
+            Array.Fill(px, color);
+            wb.WritePixels(new System.Windows.Int32Rect(0, 0, width, height), px, width * 4, 0);
+
+            var meta = new BitmapMetadata("gif");
+            if (left > 0) meta.SetQuery("/imgdesc/Left", (ushort)left);
+            if (top > 0) meta.SetQuery("/imgdesc/Top", (ushort)top);
+            if (disposal > 0) meta.SetQuery("/grctlext/Disposal", disposal);
+
+            return BitmapFrame.Create(wb, null, meta, null);
+        }
+
+        [Fact]
+        public void CompositeGifFrames_DisposalMethod2_RestoresToBackground()
+        {
+            // Frame 0: 10x10 White (0xFFFFFFFF), Keep (disposal 1)
+            var f0 = CreateFrameWithMeta(10, 10, 0xFFFFFFFF, left: 0, top: 0, disposal: 1);
+            // Frame 1: 5x5 Red (0xFFFF0000) at (0, 0), Restore to background (disposal 2)
+            var f1 = CreateFrameWithMeta(5, 5, 0xFFFF0000, left: 0, top: 0, disposal: 2);
+            // Frame 2: 2x2 Blue (0xFF0000FF) at (8, 8), Keep
+            var f2 = CreateFrameWithMeta(2, 2, 0xFF0000FF, left: 8, top: 8, disposal: 0);
+
+            var composited = GifToMonochromeConverter.CompositeGifFrames([f0, f1, f2]);
+            Assert.Equal(3, composited.Count);
+
+            // Frame 1 should show red at (0, 0)
+            uint[] px1 = new uint[100];
+            composited[1].CopyPixels(px1, 40, 0);
+            Assert.Equal(0xFFFF0000, px1[0]);
+
+            // Frame 2: The area of Frame 1 (0,0 to 4,4) was cleared (restored to background = 0)
+            uint[] px2 = new uint[100];
+            composited[2].CopyPixels(px2, 40, 0);
+            Assert.Equal(0u, px2[0]); // Restored to transparent background!
+            Assert.Equal(0xFF0000FF, px2[8 * 10 + 8]); // Frame 2's blue pixel
+        }
+
+        [Fact]
+        public void CompositeGifFrames_DisposalMethod3_RestoresToPreviousState()
+        {
+            // Frame 0: 10x10 White (0xFFFFFFFF), Keep
+            var f0 = CreateFrameWithMeta(10, 10, 0xFFFFFFFF, left: 0, top: 0, disposal: 1);
+            // Frame 1: 5x5 Red (0xFFFF0000) at (0, 0), Restore to previous (disposal 3)
+            var f1 = CreateFrameWithMeta(5, 5, 0xFFFF0000, left: 0, top: 0, disposal: 3);
+            // Frame 2: 2x2 Blue (0xFF0000FF) at (8, 8), Keep
+            var f2 = CreateFrameWithMeta(2, 2, 0xFF0000FF, left: 8, top: 8, disposal: 0);
+
+            var composited = GifToMonochromeConverter.CompositeGifFrames([f0, f1, f2]);
+            Assert.Equal(3, composited.Count);
+
+            // Frame 1 shows Red at (0, 0)
+            uint[] px1 = new uint[100];
+            composited[1].CopyPixels(px1, 40, 0);
+            Assert.Equal(0xFFFF0000, px1[0]);
+
+            // Frame 2: Frame 1 had disposal 3, so canvas restored to Frame 0 state (White at (0, 0))!
+            uint[] px2 = new uint[100];
+            composited[2].CopyPixels(px2, 40, 0);
+            Assert.Equal(0xFFFFFFFF, px2[0]); // Restored to Frame 0's White!
+            Assert.Equal(0xFF0000FF, px2[8 * 10 + 8]); // Frame 2's blue pixel
+        }
+
+        [Fact]
+        public void CompositeGifFrames_DeltaFramesExtendingBeyondFrame0_ExpandsCanvasToEncompassAllFrames()
+        {
+            var f0 = CreateFrameWithMeta(10, 10, 0xFFFFFFFF, left: 0, top: 0);
+            var f1 = CreateFrameWithMeta(10, 10, 0xFFFF0000, left: 5, top: 5);
+
+            var composited = GifToMonochromeConverter.CompositeGifFrames([f0, f1]);
+            Assert.Equal(2, composited.Count);
+            Assert.Equal(15, composited[0].PixelWidth);
+            Assert.Equal(15, composited[0].PixelHeight);
+            Assert.Equal(15, composited[1].PixelWidth);
+            Assert.Equal(15, composited[1].PixelHeight);
+        }
+
+        [Fact]
+        public void ConvertAnimatedGif_LargeFrameCount_OnlyProcessesSelectedFrames()
+        {
+            var gifPath = CreateTestGif(32, 32, frameCount: 100);
+            try
+            {
+                var settings = new AnimationImportSettings
+                {
+                    MaxDimension = 32,
+                    TargetFps = 5,
+                    MaxFrames = 8,
+                    UniformSampling = true,
+                    Threshold = 128
+                };
+
+                var (frames, width, height, wasScaled) = GifToMonochromeConverter.ConvertAnimatedGif(gifPath, settings);
+
+                Assert.Equal(8, frames.Count);
+                Assert.Equal(32, width);
+                Assert.Equal(32, height);
+            }
+            finally
+            {
+                if (File.Exists(gifPath)) File.Delete(gifPath);
+            }
+        }
     }
 }
 
