@@ -27,17 +27,32 @@ namespace Hexprite.Services
             if (decoder.Frames.Count == 0)
                 throw new InvalidOperationException("Image has no frames.");
 
-            // 1. Pre-select the frames to keep based on Target FPS and MaxFrames
-            var selectedIndices = GetSelectedFrameIndices(decoder.Frames, settings.TargetFps, settings.MaxFrames, settings.UniformSampling);
+            // 1. Detect effective active frames if trimming trailing blank frames
+            int rawFrameLimit = decoder.Frames.Count;
+            if (settings.TrimTrailingBlankFrames && rawFrameLimit > 1)
+            {
+                int lastActive = FindLastActiveFrameIndex(decoder.Frames);
+                if (lastActive >= 0 && lastActive < decoder.Frames.Count - 1)
+                {
+                    rawFrameLimit = lastActive + 1;
+                }
+            }
 
-            // 2. Composite frames using a lightweight software buffer, only constructing BitmapSource for selected frames
+            IReadOnlyList<BitmapFrame> effectiveRawFrames = rawFrameLimit < decoder.Frames.Count
+                ? decoder.Frames.Take(rawFrameLimit).ToList()
+                : decoder.Frames;
+
+            // 2. Pre-select the frames to keep based on Target FPS and MaxFrames
+            var selectedIndices = GetSelectedFrameIndices(effectiveRawFrames, settings.TargetFps, settings.MaxFrames, settings.UniformSampling);
+
+            // 3. Composite frames using a lightweight software buffer, only constructing BitmapSource for selected frames
             var compositedFrames = CompositeGifFramesInternal(decoder.Frames, selectedIndices);
 
             List<bool[]> resultFrames = [];
             int finalW = 0, finalH = 0;
             bool wasScaled = false;
 
-            // 3. Convert each selected frame to 1-bit monochrome in-memory (zero disk I/O)
+            // 4. Convert each selected frame to 1-bit monochrome in-memory (zero disk I/O)
             foreach (var frame in compositedFrames)
             {
                 var (pixels, w, h, scaled) = BitmapToMonochromeConverter.ConvertBitmapSource(frame, settings);
@@ -50,23 +65,34 @@ namespace Hexprite.Services
             return (resultFrames, finalW, finalH, wasScaled);
         }
 
-        public static List<BitmapSource> CompositeGifFrames(IReadOnlyList<BitmapFrame> rawFrames)
+        public static List<BitmapSource> CompositeGifFrames(IReadOnlyList<BitmapFrame> rawFrames, int? maxFramesToProcess = null)
         {
             if (rawFrames.Count == 0) return [];
-            return CompositeGifFramesInternal(rawFrames, selectedIndices: null);
+            return CompositeGifFramesInternal(rawFrames, selectedIndices: null, maxFramesToProcess: maxFramesToProcess);
         }
 
         private static List<BitmapSource> CompositeGifFramesInternal(
             IReadOnlyList<BitmapFrame> rawFrames,
-            IReadOnlyList<int>? selectedIndices)
+            List<int>? selectedIndices,
+            int? maxFramesToProcess = null)
         {
             var result = new List<BitmapSource>();
             if (rawFrames.Count == 0) return result;
 
+            int maxProcessIndex = rawFrames.Count - 1;
+            if (selectedIndices != null && selectedIndices.Count > 0)
+            {
+                maxProcessIndex = Math.Min(maxProcessIndex, selectedIndices.Max());
+            }
+            else if (maxFramesToProcess.HasValue && maxFramesToProcess.Value > 0)
+            {
+                maxProcessIndex = Math.Min(maxProcessIndex, maxFramesToProcess.Value - 1);
+            }
+
             int canvasWidth = rawFrames[0].PixelWidth;
             int canvasHeight = rawFrames[0].PixelHeight;
 
-            for (int i = 0; i < rawFrames.Count; i++)
+            for (int i = 0; i <= maxProcessIndex; i++)
             {
                 int left = 0, top = 0;
                 if (rawFrames[i].Metadata is BitmapMetadata meta)
@@ -97,14 +123,14 @@ namespace Hexprite.Services
             uint[]? previousCanvas = null;
 
             int maxFramePixels = 0;
-            for (int i = 0; i < rawFrames.Count; i++)
+            for (int i = 0; i <= maxProcessIndex; i++)
             {
                 int count = rawFrames[i].PixelWidth * rawFrames[i].PixelHeight;
                 if (count > maxFramePixels) maxFramePixels = count;
             }
             uint[] framePixelBuffer = new uint[Math.Max(1, maxFramePixels)];
 
-            for (int i = 0; i < rawFrames.Count; i++)
+            for (int i = 0; i <= maxProcessIndex; i++)
             {
                 var frame = rawFrames[i];
                 int left = 0, top = 0;
@@ -323,15 +349,158 @@ namespace Hexprite.Services
             return selected;
         }
 
-        private static List<BitmapSource> SelectFrames(
-            List<BitmapSource> composited,
-            ReadOnlyCollection<BitmapFrame> rawFrames,
-            int targetFps,
-            int maxFrames,
-            bool uniformSampling)
+        /// <summary>
+        /// Finds the 0-based index of the last non-blank active frame in a GIF sequence.
+        /// Returns (frames.Count - 1) if no trailing blank padding is detected (e.g. less than 2 trailing blank frames,
+        /// or the entire sequence is blank).
+        /// </summary>
+        public static int FindLastActiveFrameIndex(IReadOnlyList<BitmapFrame> frames)
         {
-            var indices = GetSelectedFrameIndices(rawFrames, targetFps, maxFrames, uniformSampling);
-            return indices.Select(i => composited[Math.Clamp(i, 0, composited.Count - 1)]).ToList();
+            if (frames == null || frames.Count <= 1) return (frames?.Count ?? 0) - 1;
+
+            int maxPixels = 0;
+            for (int i = 0; i < frames.Count; i++)
+            {
+                int count = frames[i].PixelWidth * frames[i].PixelHeight;
+                if (count > maxPixels) maxPixels = count;
+            }
+            byte[] buffer = new byte[Math.Max(1, maxPixels * 4)];
+
+            // If the very last frame is not blank, no trailing blank frames exist
+            if (!IsFrameBlank(frames[^1], buffer))
+                return frames.Count - 1;
+
+            int foundActive = -1;
+
+            if (frames.Count <= 64)
+            {
+                // For small frame counts, scan directly backwards without skipping
+                for (int i = frames.Count - 2; i >= 0; i--)
+                {
+                    if (!IsFrameBlank(frames[i], buffer))
+                    {
+                        foundActive = i;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                const int Step = 16;
+                // Step backwards from the end
+                for (int i = frames.Count - 2; i >= 0; i -= Step)
+                {
+                    if (!IsFrameBlank(frames[i], buffer))
+                    {
+                        foundActive = i;
+                        break;
+                    }
+                }
+
+                if (foundActive < 0)
+                {
+                    // Check remainder between 0 and Step - 1
+                    for (int i = Math.Min(Step - 1, frames.Count - 2); i >= 0; i--)
+                    {
+                        if (!IsFrameBlank(frames[i], buffer))
+                        {
+                            foundActive = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (foundActive >= 0)
+                {
+                    // Scan forward to find exact last active frame
+                    for (int i = foundActive + 1; i < frames.Count; i++)
+                    {
+                        if (IsFrameBlank(frames[i], buffer))
+                            break;
+                        foundActive = i;
+                    }
+                }
+            }
+
+            if (foundActive < 0)
+            {
+                // Entire animation is blank (or no active frames detected) -> do not trim
+                return frames.Count - 1;
+            }
+
+            int trailingBlanks = frames.Count - 1 - foundActive;
+            // Only trim if there are at least 2 trailing blank frames (empty tail padding)
+            return trailingBlanks >= 2 ? foundActive : frames.Count - 1;
+        }
+
+        private static bool IsFrameBlank(BitmapFrame frame, byte[] buffer)
+        {
+            int w = frame.PixelWidth;
+            int h = frame.PixelHeight;
+            if (w <= 0 || h <= 0) return true;
+
+            int pixelCount = w * h;
+
+            if (frame.Format == PixelFormats.Indexed8 || frame.Format == PixelFormats.Indexed4 || frame.Format == PixelFormats.Indexed2 || frame.Format == PixelFormats.Indexed1)
+            {
+                int stride = (w * frame.Format.BitsPerPixel + 7) / 8;
+                int byteCount = stride * h;
+                if (buffer.Length < byteCount) buffer = new byte[byteCount];
+
+                frame.CopyPixels(buffer, stride, 0);
+
+                byte firstByte = buffer[0];
+                bool allSame = true;
+                for (int i = 1; i < byteCount; i++)
+                {
+                    if (buffer[i] != firstByte)
+                    {
+                        allSame = false;
+                        break;
+                    }
+                }
+
+                if (allSame)
+                {
+                    var pal = frame.Palette;
+                    if (pal != null && firstByte < pal.Colors.Count)
+                    {
+                        var col = pal.Colors[firstByte];
+                        if (col.A == 0 || (col.R == 0 && col.G == 0 && col.B == 0))
+                            return true;
+                    }
+                    else
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            int bgraBytes = pixelCount * 4;
+            if (buffer.Length < bgraBytes) buffer = new byte[bgraBytes];
+
+            BitmapSource source = frame;
+            if (frame.Format != PixelFormats.Bgra32)
+            {
+                source = new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
+            }
+            source.CopyPixels(buffer, w * 4, 0);
+
+            for (int i = 0; i < bgraBytes; i += 4)
+            {
+                byte r = buffer[i + 2];
+                byte g = buffer[i + 1];
+                byte b = buffer[i];
+                byte a = buffer[i + 3];
+
+                if (a > 0 && (r > 0 || g > 0 || b > 0))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

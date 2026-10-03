@@ -13,6 +13,8 @@ namespace Hexprite.Services
         public int MaxFrames { get; set; } = 32;
         /// <summary>If true, uniformly samples the source frames to match the target FPS.</summary>
         public bool UniformSampling { get; set; } = true;
+        /// <summary>If true, automatically trims trailing empty/blank frames from animations.</summary>
+        public bool TrimTrailingBlankFrames { get; set; } = true;
 
         public static AnimationImportSettings FromBase(BitmapImportSettings source)
         {

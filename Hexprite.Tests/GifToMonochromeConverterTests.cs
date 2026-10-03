@@ -339,6 +339,126 @@ namespace Hexprite.Tests
                 if (File.Exists(gifPath)) File.Delete(gifPath);
             }
         }
+
+        [Fact]
+        public void ConvertAnimatedGif_04CuriousGif_TrimsTrailingBlankFramesAndSamplesAllActive()
+        {
+            string path = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "TestAssets", "04_Curious.gif"));
+            if (!File.Exists(path)) path = @"H:\Repositories\hexprite\TestAssets\04_Curious.gif";
+            if (!File.Exists(path)) return; // Skip if test asset not present
+
+            var settings = new AnimationImportSettings
+            {
+                TargetFps = 12,
+                MaxFrames = 256,
+                UniformSampling = true,
+                TrimTrailingBlankFrames = true,
+                Threshold = 128,
+                MaxDimension = 128
+            };
+
+            var (frames, width, height, wasScaled) = GifToMonochromeConverter.ConvertAnimatedGif(path, settings);
+
+            Assert.NotEmpty(frames);
+            // 5.4 seconds active duration at 12 FPS should yield around 65 frames
+            Assert.InRange(frames.Count, 60, 70);
+
+            // Verify that EVERY frame has active pixels (no blank frames anywhere, including after frame 10)
+            for (int i = 0; i < frames.Count; i++)
+            {
+                int onPixels = frames[i].Count(p => p);
+                Assert.True(onPixels > 0, $"Frame {i} (1-based: Frame {i + 1}) should have active pixels, but had 0.");
+            }
+        }
+
+        [Fact]
+        public void ConvertAnimatedGif_04CuriousGif_WhenTrimDisabled_RetainsAllFrames()
+        {
+            string path = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "TestAssets", "04_Curious.gif"));
+            if (!File.Exists(path)) path = @"H:\Repositories\hexprite\TestAssets\04_Curious.gif";
+            if (!File.Exists(path)) return;
+
+            var settings = new AnimationImportSettings
+            {
+                TargetFps = 12,
+                MaxFrames = 256,
+                UniformSampling = true,
+                TrimTrailingBlankFrames = false,
+                Threshold = 128,
+                MaxDimension = 128
+            };
+
+            var (frames, width, height, wasScaled) = GifToMonochromeConverter.ConvertAnimatedGif(path, settings);
+
+            Assert.Equal(256, frames.Count);
+            // When trimming is disabled, the tail frames (after 5.4s) will be blank
+            Assert.True(frames[^1].All(p => !p), "Last frame should be blank when trimming is disabled.");
+        }
+
+        [Fact]
+        public void FindLastActiveFrameIndex_04CuriousGif_DetectsCutoffAccurately()
+        {
+            string path = Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "TestAssets", "04_Curious.gif"));
+            if (!File.Exists(path)) path = @"H:\Repositories\hexprite\TestAssets\04_Curious.gif";
+            if (!File.Exists(path)) return;
+
+            using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
+
+            int lastActive = GifToMonochromeConverter.FindLastActiveFrameIndex(decoder.Frames);
+            Assert.Equal(134, lastActive);
+        }
+
+        [Fact]
+        public void ConvertAnimatedGif_SyntheticTrailingBlankFrames_TrimsTrailingFrames()
+        {
+            // Create a GIF with 4 frames: Frame 0 (white), Frame 1 (white), Frame 2 (black/blank), Frame 3 (black/blank)
+            var tempPath = Path.Combine(Path.GetTempPath(), $"test_trailing_blank_{Guid.NewGuid():N}.gif");
+            var encoder = new GifBitmapEncoder();
+
+            for (int f = 0; f < 4; f++)
+            {
+                var wb = new WriteableBitmap(16, 16, 96, 96, PixelFormats.Bgra32, null);
+                byte[] pixels = new byte[16 * 16 * 4];
+                byte val = (byte)(f < 2 ? 255 : 0); // Frames 0, 1 white; Frames 2, 3 black
+                for (int i = 0; i < pixels.Length; i += 4)
+                {
+                    pixels[i] = val;
+                    pixels[i + 1] = val;
+                    pixels[i + 2] = val;
+                    pixels[i + 3] = 255;
+                }
+                wb.WritePixels(new System.Windows.Int32Rect(0, 0, 16, 16), pixels, 16 * 4, 0);
+                encoder.Frames.Add(BitmapFrame.Create(wb));
+            }
+
+            using (var fs = File.OpenWrite(tempPath))
+            {
+                encoder.Save(fs);
+            }
+
+            try
+            {
+                var settings = new AnimationImportSettings
+                {
+                    TargetFps = 10,
+                    MaxFrames = 10,
+                    UniformSampling = false,
+                    TrimTrailingBlankFrames = true,
+                    Threshold = 128
+                };
+
+                var (frames, _, _, _) = GifToMonochromeConverter.ConvertAnimatedGif(tempPath, settings);
+
+                // Should trim the 2 trailing blank frames, leaving only the 2 white frames
+                Assert.Equal(2, frames.Count);
+                Assert.All(frames, f => Assert.Contains(true, f));
+            }
+            finally
+            {
+                if (File.Exists(tempPath)) File.Delete(tempPath);
+            }
+        }
     }
 }
 

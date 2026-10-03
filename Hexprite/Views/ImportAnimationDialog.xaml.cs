@@ -26,6 +26,8 @@ namespace Hexprite.Views
         private bool _shouldFitPreviewToFrame;
         private System.Collections.Generic.List<BitmapSource>? _cachedFrames;
         private readonly int _naturalMaxDimension = SpriteState.MaxDimension;
+        private int _totalRawFrameCount;
+        private int _activeRawFrameCount;
 
         public ImportAnimationDialog(string fileName, AnimationImportSettings initialSettings)
         {
@@ -34,7 +36,7 @@ namespace Hexprite.Views
 
             Closed += (_, _) => Dispose();
 
-            int origW = 0, origH = 0, frameCount = 0;
+            int origW = 0, origH = 0, frameCount = 0, activeCount = 0;
             try
             {
                 if (!string.IsNullOrEmpty(fileName) && System.IO.File.Exists(fileName))
@@ -46,8 +48,17 @@ namespace Hexprite.Views
                     {
                         origW = decoder.Frames[0].PixelWidth;
                         origH = decoder.Frames[0].PixelHeight;
-                        FrameSlider.Maximum = frameCount;
-                        FrameCountTextBlock.Text = string.Create(CultureInfo.InvariantCulture, $"/ {frameCount}");
+                        int lastActive = GifToMonochromeConverter.FindLastActiveFrameIndex(decoder.Frames);
+                        activeCount = (lastActive >= 0 && lastActive < frameCount - 1) ? lastActive + 1 : frameCount;
+                        _totalRawFrameCount = frameCount;
+                        _activeRawFrameCount = activeCount;
+
+                        int displayFrames = (initialSettings.TrimTrailingBlankFrames && activeCount > 0 && activeCount < frameCount)
+                            ? activeCount
+                            : frameCount;
+
+                        FrameSlider.Maximum = displayFrames;
+                        FrameCountTextBlock.Text = string.Create(CultureInfo.InvariantCulture, $"/ {displayFrames}");
                     }
                 }
             }
@@ -55,8 +66,12 @@ namespace Hexprite.Views
 
             if (origW > 0 && origH > 0)
             {
+                string frameInfo = (activeCount > 0 && activeCount < frameCount)
+                    ? $"{activeCount} active frames / {frameCount} total"
+                    : $"{frameCount} frames";
+
                 TxtSourceFile.Text = frameCount > 0
-                    ? $"{System.IO.Path.GetFileName(fileName)} ({origW} × {origH} px, {frameCount} frames)"
+                    ? $"{System.IO.Path.GetFileName(fileName)} ({origW} × {origH} px, {frameInfo})"
                     : $"{System.IO.Path.GetFileName(fileName)} ({origW} × {origH} px)";
                 _naturalMaxDimension = Math.Clamp(Math.Max(origW, origH), 1, SpriteState.MaxDimension);
             }
@@ -133,6 +148,7 @@ namespace Hexprite.Views
             ChkPreserveEdges.IsChecked = initialSettings.PreserveEdges;
             ChkSharpen.IsChecked = initialSettings.Sharpen;
             ChkUniformSampling.IsChecked = initialSettings.UniformSampling;
+            ChkTrimTrailingBlank.IsChecked = initialSettings.TrimTrailingBlankFrames;
             
             PresetCombo.SelectionChanged += PresetCombo_SelectionChanged;
 
@@ -458,6 +474,23 @@ namespace Hexprite.Views
 
         private void AnySettingChanged(object sender, RoutedEventArgs e)
         {
+            if (!_isUpdatingFromCode && ChkTrimTrailingBlank != null && _totalRawFrameCount > 0)
+            {
+                int targetMax = (ChkTrimTrailingBlank.IsChecked == true && _activeRawFrameCount > 0 && _activeRawFrameCount < _totalRawFrameCount)
+                    ? _activeRawFrameCount
+                    : _totalRawFrameCount;
+
+                if (FrameSlider != null && targetMax > 0 && (int)FrameSlider.Maximum != targetMax)
+                {
+                    _cachedFrames = null;
+                    _isUpdatingFromCode = true;
+                    FrameSlider.Maximum = targetMax;
+                    FrameCountTextBlock.Text = string.Create(CultureInfo.InvariantCulture, $"/ {targetMax}");
+                    if (FrameSlider.Value > targetMax)
+                        FrameSlider.Value = targetMax;
+                    _isUpdatingFromCode = false;
+                }
+            }
             RefreshImportEnabled();
         }
 
@@ -537,6 +570,7 @@ namespace Hexprite.Views
                 TargetFps = fps,
                 MaxFrames = maxFrames,
                 UniformSampling = ChkUniformSampling.IsChecked == true,
+                TrimTrailingBlankFrames = ChkTrimTrailingBlank.IsChecked == true,
                 DitheringAlgorithm = algorithm,
                 ScalingMode = scalingMode,
                 Threshold = threshold,
@@ -630,7 +664,10 @@ namespace Hexprite.Views
                         using var stream = System.IO.File.Open(_sourceFileName, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
                         var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.IgnoreColorProfile, BitmapCacheOption.OnLoad);
                         if (decoder.Frames.Count == 0) throw new InvalidOperationException("Image has no frames.");
-                        composited = Hexprite.Services.GifToMonochromeConverter.CompositeGifFrames(decoder.Frames);
+                        int framesToProcess = settings.TrimTrailingBlankFrames && _activeRawFrameCount > 0
+                            ? _activeRawFrameCount
+                            : decoder.Frames.Count;
+                        composited = Hexprite.Services.GifToMonochromeConverter.CompositeGifFrames(decoder.Frames, framesToProcess);
                     }
 
                     int actualIndex = Math.Min(frameIndex, composited.Count - 1);

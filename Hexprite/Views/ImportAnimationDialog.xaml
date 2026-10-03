@@ -339,6 +339,12 @@
                                           Checked="AnySettingChanged"
                                           Unchecked="AnySettingChanged"
                                           Margin="0,0,0,4" />
+                                <CheckBox x:Name="ChkTrimTrailingBlank"
+                                          Content="Trim trailing blank frames (removes empty tail padding)"
+                                          Foreground="{DynamicResource Brush.Text.Primary}"
+                                          Checked="AnySettingChanged"
+                                          Unchecked="AnySettingChanged"
+                                          Margin="0,0,0,4" />
                                 <CheckBox x:Name="ChkSharpen"
                                           Content="Sharpen image before dithering"
                                           Foreground="{DynamicResource Brush.Text.Primary}"
