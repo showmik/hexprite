@@ -586,6 +586,66 @@ namespace Hexprite.Tests
                 }
             });
         }
+
+        [Fact]
+        public void ImportBitmapDialog_LoadingOverlay_ContainsThemedPillCardAndSpinner()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempPng(64, 64);
+                try
+                {
+                    using var dlg = new ImportBitmapDialog(tempFile, new BitmapImportSettings());
+                    var overlay = (Border)dlg.FindName("LoadingOverlay");
+                    Assert.NotNull(overlay);
+                    Assert.Equal(System.Windows.Visibility.Collapsed, overlay.Visibility);
+
+                    var card = Assert.IsType<Border>(overlay.Child);
+                    Assert.NotNull(card.Effect);
+                    Assert.IsType<System.Windows.Media.Effects.DropShadowEffect>(card.Effect);
+
+                    var panel = Assert.IsType<StackPanel>(card.Child);
+                    Assert.True(panel.Children.Count >= 2);
+                    var spinner = Assert.IsType<Control>(panel.Children[0]);
+                    var label = Assert.IsType<TextBlock>(panel.Children[1]);
+                    Assert.Equal("Rendering preview...", label.Text);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
+
+        [Fact]
+        public void ImportAnimationDialog_LoadingOverlay_ContainsThemedPillCardAndSpinner()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempGif(64, 64, frameCount: 2);
+                try
+                {
+                    using var dlg = new ImportAnimationDialog(tempFile, new AnimationImportSettings());
+                    var overlay = (Border)dlg.FindName("LoadingOverlay");
+                    Assert.NotNull(overlay);
+                    Assert.Equal(System.Windows.Visibility.Collapsed, overlay.Visibility);
+
+                    var card = Assert.IsType<Border>(overlay.Child);
+                    Assert.NotNull(card.Effect);
+                    Assert.IsType<System.Windows.Media.Effects.DropShadowEffect>(card.Effect);
+
+                    var panel = Assert.IsType<StackPanel>(card.Child);
+                    Assert.True(panel.Children.Count >= 2);
+                    var spinner = Assert.IsType<Control>(panel.Children[0]);
+                    var label = Assert.IsType<TextBlock>(panel.Children[1]);
+                    Assert.Equal("Rendering animation...", label.Text);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
     }
 }
 

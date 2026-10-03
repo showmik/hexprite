@@ -1234,19 +1234,44 @@
 
         <!-- Loading Overlay -->
         <Grid Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibilityConverter}}"
-              Background="#80000000"
+              Background="#66000000"
               Panel.ZIndex="1000">
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                <TextBlock Text="Importing image..." 
-                           Foreground="White"
-                           FontSize="16"
-                           FontWeight="SemiBold"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,16"/>
-                <ProgressBar IsIndeterminate="True"
-                             Width="200"
-                             Height="4"/>
-            </StackPanel>
+            <Border HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource Brush.Surface.Overlay}"
+                    BorderBrush="{DynamicResource Brush.Border.Base}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="32,24"
+                    MinWidth="300">
+                <Border.Effect>
+                    <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                                      BlurRadius="24" ShadowDepth="6" Opacity="0.5" Direction="270" />
+                </Border.Effect>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Control Style="{StaticResource ModernSpinnerStyle}"
+                             Width="32" Height="32"
+                             Margin="0,0,0,14"
+                             HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding ImportStatusMessage, FallbackValue='Importing...'}"
+                               Foreground="{DynamicResource Brush.Text.Primary}"
+                               FontFamily="{DynamicResource Font.Primary}"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,4" />
+                    <TextBlock Text="Processing and converting pixels..."
+                               Foreground="{DynamicResource Brush.Text.Muted}"
+                               FontFamily="{DynamicResource Font.Primary}"
+                               FontSize="12"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,16" />
+                    <ProgressBar IsIndeterminate="True"
+                                 Width="220"
+                                 Height="4"
+                                 HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
         </Grid>
 
         </Grid>

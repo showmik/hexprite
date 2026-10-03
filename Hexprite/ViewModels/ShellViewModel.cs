@@ -68,6 +68,13 @@ namespace Hexprite.ViewModels
             set => SetProperty(ref _isImporting, value);
         }
 
+        private string _importStatusMessage = "Importing image...";
+        public string ImportStatusMessage
+        {
+            get => _importStatusMessage;
+            set => SetProperty(ref _importStatusMessage, value);
+        }
+
         private bool _isToolSidebarVisible = true;
         public bool IsToolSidebarVisible
         {
@@ -2181,6 +2188,7 @@ namespace Hexprite.ViewModels
                 selectedPath = candidate;
             }
 
+            ImportStatusMessage = "Opening file...";
             IsImporting = true;
             try
             {
@@ -2248,6 +2256,7 @@ namespace Hexprite.ViewModels
                 return;
             }
 
+            ImportStatusMessage = "Opening image...";
             IsImporting = true;
             try
             {
@@ -2342,6 +2351,7 @@ namespace Hexprite.ViewModels
                     if (importSettings == null) return;
                     UserPreferencesService.SaveImportSettings(importSettings);
 
+                    ImportStatusMessage = "Importing animation...";
                     IsImporting = true;
 
                     var (frames, w, h, wasScaled) = await RunOnStaThreadAsync(() =>
@@ -2426,6 +2436,7 @@ namespace Hexprite.ViewModels
                     if (importSettings == null) return;
                     UserPreferencesService.SaveImportSettings(importSettings);
 
+                    ImportStatusMessage = "Importing bitmap...";
                     IsImporting = true;
 
                     // WPF image decode pipelines are STA-affine; run conversion on a dedicated STA thread

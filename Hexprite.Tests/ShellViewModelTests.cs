@@ -705,5 +705,25 @@ const unsigned char block_animation[3][8] = {
             Assert.Equal(18, loadedAnim.TargetFps);
             Assert.Equal(48, loadedAnim.MaxFrames);
         }
+
+        [Fact]
+        public void ImportStatusMessage_HasDefaultAndNotifiesChanges()
+        {
+            var vm = CreateShellViewModel(out _);
+            Assert.Equal("Importing image...", vm.ImportStatusMessage);
+
+            bool notified = false;
+            vm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(ShellViewModel.ImportStatusMessage))
+                {
+                    notified = true;
+                }
+            };
+
+            vm.ImportStatusMessage = "Importing animation...";
+            Assert.Equal("Importing animation...", vm.ImportStatusMessage);
+            Assert.True(notified);
+        }
     }
 }

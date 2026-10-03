@@ -497,13 +497,36 @@
                                 </Grid>
                             </ScrollViewer>
                             
+                            <!-- Loading overlay -->
                             <Border x:Name="LoadingOverlay"
-                                    Background="#80000000"
-                                    Visibility="Collapsed">
-                                <TextBlock Text="Processing..."
-                                           Foreground="White"
-                                           VerticalAlignment="Center"
-                                           HorizontalAlignment="Center" />
+                                    Background="#30000000"
+                                    Visibility="Collapsed"
+                                    IsHitTestVisible="False"
+                                    CornerRadius="6">
+                                <Border HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource Brush.Surface.Elevated}"
+                                        BorderBrush="{DynamicResource Brush.Border.Base}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="14,10">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource Palette.Common.Shadow}"
+                                                          BlurRadius="16" ShadowDepth="3" Opacity="0.45" Direction="270" />
+                                    </Border.Effect>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Control Style="{StaticResource ModernSpinnerStyle}"
+                                                 Width="16" Height="16"
+                                                 Margin="0,0,10,0"
+                                                 VerticalAlignment="Center" />
+                                        <TextBlock Text="Rendering animation..."
+                                                   Foreground="{DynamicResource Brush.Text.Primary}"
+                                                   FontFamily="{DynamicResource Font.Primary}"
+                                                   FontSize="12"
+                                                   FontWeight="SemiBold"
+                                                   VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Border>
                             </Border>
                         </Grid>
                     </Border>
