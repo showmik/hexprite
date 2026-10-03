@@ -2335,13 +2335,12 @@ namespace Hexprite.ViewModels
 
                 if (isGif)
                 {
-                    var baseSettings = LoadBitmapImportSettings();
-                    var initSettings = AnimationImportSettings.FromBase(baseSettings);
+                    var animSettings = UserPreferencesService.GetDefaultAnimationImportSettings();
 
                     var importSettings = _dialogService.ShowImportAnimationDialog(
-                        selectedPath, initSettings);
+                        selectedPath, animSettings);
                     if (importSettings == null) return;
-                    SaveBitmapImportSettings(importSettings);
+                    UserPreferencesService.SaveImportSettings(importSettings);
 
                     IsImporting = true;
 
@@ -2420,11 +2419,12 @@ namespace Hexprite.ViewModels
                 }
                 else
                 {
+                    var baseSettings = UserPreferencesService.GetDefaultBitmapImportSettings();
                     var importSettings = _dialogService.ShowImportBitmapDialog(
                         selectedPath,
-                        LoadBitmapImportSettings());
+                        baseSettings);
                     if (importSettings == null) return;
-                    SaveBitmapImportSettings(importSettings);
+                    UserPreferencesService.SaveImportSettings(importSettings);
 
                     IsImporting = true;
 
@@ -2481,91 +2481,99 @@ namespace Hexprite.ViewModels
 
         internal static BitmapImportSettings LoadBitmapImportSettings(string? settingsFilePath = null)
         {
-            var defaults = new BitmapImportSettings
+            if (settingsFilePath != null)
             {
-                DitheringAlgorithm = BitmapDitheringAlgorithm.Atkinson,
-                ScalingMode = BitmapScalingMode.Fant,
-                Threshold = 128,
-                AlphaThreshold = 128,
-                MaxDimension = SpriteState.MaxDimension,
-                Brightness = 0,
-                Contrast = 0,
-                DitherAmount = 100,
-                Sharpen = false,
-                UseSerpentineScanning = false,
-                UseGammaCorrection = false,
-                UseAdaptiveThresholding = false,
-                PreserveEdges = false,
-            };
+                var defaults = new BitmapImportSettings
+                {
+                    DitheringAlgorithm = BitmapDitheringAlgorithm.Atkinson,
+                    ScalingMode = BitmapScalingMode.Fant,
+                    Threshold = 128,
+                    AlphaThreshold = 128,
+                    MaxDimension = SpriteState.MaxDimension,
+                    Brightness = 0,
+                    Contrast = 0,
+                    DitherAmount = 100,
+                    Sharpen = false,
+                    UseSerpentineScanning = false,
+                    UseGammaCorrection = false,
+                    UseAdaptiveThresholding = false,
+                    PreserveEdges = false,
+                };
 
-            string targetFile = settingsFilePath ?? BitmapImportSettingsFile;
-            try
-            {
-                if (!File.Exists(targetFile))
+                try
+                {
+                    if (!File.Exists(settingsFilePath))
+                        return defaults;
+
+                    string json = File.ReadAllText(settingsFilePath);
+                    BitmapImportSettings? saved = JsonSerializer.Deserialize<BitmapImportSettings>(json);
+                    if (saved == null)
+                        return defaults;
+
+                    saved.Threshold = Math.Clamp(saved.Threshold, 0, 255);
+                    saved.AlphaThreshold = Math.Clamp(saved.AlphaThreshold, 0, 255);
+                    // MaxDimension is intrinsic to the source image being imported, not a global user preference.
+                    // Reset to SpriteState.MaxDimension so previous file dimensions do not pollute future imports.
+                    saved.MaxDimension = SpriteState.MaxDimension;
+                    saved.Brightness = Math.Clamp(saved.Brightness, -100, 100);
+                    saved.Contrast = Math.Clamp(saved.Contrast, -100, 100);
+                    saved.DitherAmount = Math.Clamp(saved.DitherAmount, 0, 100);
+                    if (!Enum.IsDefined(saved.Preset))
+                        saved.Preset = ImportPreset.Default;
+                    return saved;
+                }
+                catch (Exception ex)
+                {
+                    HandledErrorReporter.Warning(ex, "ShellViewModel.LoadBitmapImportSettings", new { BitmapImportSettingsFile = settingsFilePath });
                     return defaults;
-
-                string json = File.ReadAllText(targetFile);
-                BitmapImportSettings? saved = JsonSerializer.Deserialize<BitmapImportSettings>(json);
-                if (saved == null)
-                    return defaults;
-
-                saved.Threshold = Math.Clamp(saved.Threshold, 0, 255);
-                saved.AlphaThreshold = Math.Clamp(saved.AlphaThreshold, 0, 255);
-                // MaxDimension is intrinsic to the source image being imported, not a global user preference.
-                // Reset to SpriteState.MaxDimension so previous file dimensions do not pollute future imports.
-                saved.MaxDimension = SpriteState.MaxDimension;
-                saved.Brightness = Math.Clamp(saved.Brightness, -100, 100);
-                saved.Contrast = Math.Clamp(saved.Contrast, -100, 100);
-                saved.DitherAmount = Math.Clamp(saved.DitherAmount, 0, 100);
-                if (!Enum.IsDefined(saved.Preset))
-                    saved.Preset = ImportPreset.Default;
-                return saved;
+                }
             }
-            catch (Exception ex)
-            {
-                HandledErrorReporter.Warning(ex, "ShellViewModel.LoadBitmapImportSettings", new { BitmapImportSettingsFile = targetFile });
-                return defaults;
-            }
+
+            return UserPreferencesService.GetDefaultBitmapImportSettings();
         }
 
         internal static void SaveBitmapImportSettings(BitmapImportSettings settings, string? settingsFilePath = null)
         {
-            string targetFile = settingsFilePath ?? BitmapImportSettingsFile;
-            try
+            if (settingsFilePath != null)
             {
-                var dir = Path.GetDirectoryName(targetFile);
-                if (!string.IsNullOrEmpty(dir))
+                try
                 {
-                    Directory.CreateDirectory(dir);
+                    var dir = Path.GetDirectoryName(settingsFilePath);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    // Clone settings and normalize MaxDimension before saving so file-specific dimensions are not stored
+                    var settingsToSave = new BitmapImportSettings
+                    {
+                        Preset = settings.Preset,
+                        MaxDimension = SpriteState.MaxDimension,
+                        Threshold = settings.Threshold,
+                        AlphaThreshold = settings.AlphaThreshold,
+                        Invert = settings.Invert,
+                        DitheringAlgorithm = settings.DitheringAlgorithm,
+                        ScalingMode = settings.ScalingMode,
+                        UseSerpentineScanning = settings.UseSerpentineScanning,
+                        UseGammaCorrection = settings.UseGammaCorrection,
+                        UseAdaptiveThresholding = settings.UseAdaptiveThresholding,
+                        PreserveEdges = settings.PreserveEdges,
+                        Sharpen = settings.Sharpen,
+                        Brightness = settings.Brightness,
+                        Contrast = settings.Contrast,
+                        DitherAmount = settings.DitherAmount,
+                    };
+
+                    string json = JsonSerializer.Serialize(settingsToSave, IndentedJsonOptions);
+                    File.WriteAllText(settingsFilePath, json);
                 }
-
-                // Clone settings and normalize MaxDimension before saving so file-specific dimensions are not stored
-                var settingsToSave = new BitmapImportSettings
+                catch (Exception ex)
                 {
-                    Preset = settings.Preset,
-                    MaxDimension = SpriteState.MaxDimension,
-                    Threshold = settings.Threshold,
-                    AlphaThreshold = settings.AlphaThreshold,
-                    Invert = settings.Invert,
-                    DitheringAlgorithm = settings.DitheringAlgorithm,
-                    ScalingMode = settings.ScalingMode,
-                    UseSerpentineScanning = settings.UseSerpentineScanning,
-                    UseGammaCorrection = settings.UseGammaCorrection,
-                    UseAdaptiveThresholding = settings.UseAdaptiveThresholding,
-                    PreserveEdges = settings.PreserveEdges,
-                    Sharpen = settings.Sharpen,
-                    Brightness = settings.Brightness,
-                    Contrast = settings.Contrast,
-                    DitherAmount = settings.DitherAmount,
-                };
+                    HandledErrorReporter.Warning(ex, "ShellViewModel.SaveBitmapImportSettings", new { BitmapImportSettingsFile = settingsFilePath });
+                }
+            }
 
-                string json = JsonSerializer.Serialize(settingsToSave, IndentedJsonOptions);
-                File.WriteAllText(targetFile, json);
-            }
-            catch (Exception ex)
-            {
-                HandledErrorReporter.Warning(ex, "ShellViewModel.SaveBitmapImportSettings", new { BitmapImportSettingsFile = targetFile });
-            }
+            UserPreferencesService.SaveImportSettings(settings);
         }
 
         // ── Help ──────────────────────────────────────────────────────────

@@ -684,5 +684,26 @@ const unsigned char block_animation[3][8] = {
             Assert.False(shell.OpenDisplaySimulationCommand.CanExecute(null));
             Assert.False(shell.OpenCodeViewerCommand.CanExecute(null));
         }
+
+        [Fact]
+        public void ShellViewModel_ImportSettings_RoutesThroughUserPreferencesService()
+        {
+            var settings = new AnimationImportSettings
+            {
+                Threshold = 175,
+                TargetFps = 18,
+                MaxFrames = 48,
+            };
+
+            ShellViewModel.SaveBitmapImportSettings(settings);
+
+            var loadedBmp = ShellViewModel.LoadBitmapImportSettings();
+            Assert.Equal(175, loadedBmp.Threshold);
+
+            var loadedAnim = UserPreferencesService.GetDefaultAnimationImportSettings();
+            Assert.Equal(175, loadedAnim.Threshold);
+            Assert.Equal(18, loadedAnim.TargetFps);
+            Assert.Equal(48, loadedAnim.MaxFrames);
+        }
     }
 }
