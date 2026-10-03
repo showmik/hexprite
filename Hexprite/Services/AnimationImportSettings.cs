@@ -37,5 +37,7 @@ namespace Hexprite.Services
                 Sharpen = source.Sharpen,
             };
         }
+
+        public new AnimationImportSettings Clone() => (AnimationImportSettings)MemberwiseClone();
     }
 }

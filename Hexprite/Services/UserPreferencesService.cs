@@ -107,6 +107,14 @@ namespace Hexprite.Services
         public bool IsHardwarePreviewExpanded { get; set; }
         public bool IsCodeGenerationExpanded { get; set; }
         public bool IsImportExpanded { get; set; }
+
+        // Export Defaults
+        public ExportSettings DefaultExportSettings { get; set; } = new();
+        public ImageExportSettings DefaultImageExportSettings { get; set; } = new();
+
+        // Import Defaults
+        public BitmapImportSettings DefaultBitmapImportSettings { get; set; } = new();
+        public AnimationImportSettings DefaultAnimationImportSettings { get; set; } = new();
     }
 
     public static class UserPreferencesService
@@ -225,6 +233,71 @@ namespace Hexprite.Services
                 _cached = Normalize(_cached);
                 SaveToDisk(_cached);
             }
+        }
+
+        public static ExportSettings GetDefaultExportSettings()
+        {
+            var s = Get().DefaultExportSettings.Clone();
+            s.SpriteName = "mySprite";
+            return s;
+        }
+
+        public static ImageExportSettings GetDefaultImageExportSettings() =>
+            Get().DefaultImageExportSettings.Clone();
+
+        public static BitmapImportSettings GetDefaultBitmapImportSettings() =>
+            Get().DefaultBitmapImportSettings.Clone();
+
+        public static AnimationImportSettings GetDefaultAnimationImportSettings() =>
+            Get().DefaultAnimationImportSettings.Clone();
+
+        public static void SaveImportSettings(BitmapImportSettings settings)
+        {
+            if (settings == null) return;
+            Update(prefs =>
+            {
+                var sanitizedBase = settings.Clone();
+                sanitizedBase.MaxDimension = SpriteState.MaxDimension;
+                sanitizedBase.Threshold = Math.Clamp(sanitizedBase.Threshold, 0, 255);
+                sanitizedBase.AlphaThreshold = Math.Clamp(sanitizedBase.AlphaThreshold, 0, 255);
+                sanitizedBase.Brightness = Math.Clamp(sanitizedBase.Brightness, -100, 100);
+                sanitizedBase.Contrast = Math.Clamp(sanitizedBase.Contrast, -100, 100);
+                sanitizedBase.DitherAmount = Math.Clamp(sanitizedBase.DitherAmount, 0, 100);
+
+                if (settings is AnimationImportSettings anim)
+                {
+                    var animClone = anim.Clone();
+                    animClone.MaxDimension = SpriteState.MaxDimension;
+                    animClone.TargetFps = Math.Clamp(animClone.TargetFps, 1, 24);
+                    animClone.MaxFrames = Math.Clamp(animClone.MaxFrames, 1, 256);
+                    prefs.DefaultAnimationImportSettings = animClone;
+                    prefs.DefaultBitmapImportSettings = sanitizedBase;
+                }
+                else
+                {
+                    prefs.DefaultBitmapImportSettings = sanitizedBase;
+                    prefs.DefaultAnimationImportSettings.CopyBaseFrom(sanitizedBase);
+                }
+            });
+        }
+
+        public static void ResetDefaultExportSettings()
+        {
+            Update(p => p.DefaultExportSettings = new ExportSettings());
+        }
+
+        public static void ResetDefaultImageExportSettings()
+        {
+            Update(p => p.DefaultImageExportSettings = new ImageExportSettings());
+        }
+
+        public static void ResetDefaultImportSettings()
+        {
+            Update(p =>
+            {
+                p.DefaultBitmapImportSettings = new BitmapImportSettings();
+                p.DefaultAnimationImportSettings = new AnimationImportSettings();
+            });
         }
 
         public static void AddRecentFile(string path)
@@ -419,6 +492,10 @@ namespace Hexprite.Services
                 IsHardwarePreviewExpanded = prefs.IsHardwarePreviewExpanded,
                 IsCodeGenerationExpanded = prefs.IsCodeGenerationExpanded,
                 IsImportExpanded = prefs.IsImportExpanded,
+                DefaultExportSettings = (prefs.DefaultExportSettings ?? new ExportSettings()).Clone(),
+                DefaultImageExportSettings = (prefs.DefaultImageExportSettings ?? new ImageExportSettings()).Clone(),
+                DefaultBitmapImportSettings = (prefs.DefaultBitmapImportSettings ?? new BitmapImportSettings()).Clone(),
+                DefaultAnimationImportSettings = (prefs.DefaultAnimationImportSettings ?? new AnimationImportSettings()).Clone(),
             });
         }
 
@@ -436,6 +513,32 @@ namespace Hexprite.Services
                 }
             }
             prefs.RecentFiles = deduped;
+
+            prefs.DefaultExportSettings ??= new ExportSettings();
+            prefs.DefaultExportSettings.SpriteName = "mySprite";
+            prefs.DefaultExportSettings.BytesPerLine = Math.Clamp(prefs.DefaultExportSettings.BytesPerLine, 0, 256);
+
+            prefs.DefaultImageExportSettings ??= new ImageExportSettings();
+            prefs.DefaultImageExportSettings.Scale = Math.Clamp(prefs.DefaultImageExportSettings.Scale, 1, 8);
+            prefs.DefaultImageExportSettings.GifFps = Math.Clamp(prefs.DefaultImageExportSettings.GifFps, 1, 60);
+
+            prefs.DefaultBitmapImportSettings ??= new BitmapImportSettings();
+            prefs.DefaultBitmapImportSettings.MaxDimension = SpriteState.MaxDimension;
+            prefs.DefaultBitmapImportSettings.Threshold = Math.Clamp(prefs.DefaultBitmapImportSettings.Threshold, 0, 255);
+            prefs.DefaultBitmapImportSettings.AlphaThreshold = Math.Clamp(prefs.DefaultBitmapImportSettings.AlphaThreshold, 0, 255);
+            prefs.DefaultBitmapImportSettings.Brightness = Math.Clamp(prefs.DefaultBitmapImportSettings.Brightness, -100, 100);
+            prefs.DefaultBitmapImportSettings.Contrast = Math.Clamp(prefs.DefaultBitmapImportSettings.Contrast, -100, 100);
+            prefs.DefaultBitmapImportSettings.DitherAmount = Math.Clamp(prefs.DefaultBitmapImportSettings.DitherAmount, 0, 100);
+
+            prefs.DefaultAnimationImportSettings ??= new AnimationImportSettings();
+            prefs.DefaultAnimationImportSettings.MaxDimension = SpriteState.MaxDimension;
+            prefs.DefaultAnimationImportSettings.Threshold = Math.Clamp(prefs.DefaultAnimationImportSettings.Threshold, 0, 255);
+            prefs.DefaultAnimationImportSettings.AlphaThreshold = Math.Clamp(prefs.DefaultAnimationImportSettings.AlphaThreshold, 0, 255);
+            prefs.DefaultAnimationImportSettings.Brightness = Math.Clamp(prefs.DefaultAnimationImportSettings.Brightness, -100, 100);
+            prefs.DefaultAnimationImportSettings.Contrast = Math.Clamp(prefs.DefaultAnimationImportSettings.Contrast, -100, 100);
+            prefs.DefaultAnimationImportSettings.DitherAmount = Math.Clamp(prefs.DefaultAnimationImportSettings.DitherAmount, 0, 100);
+            prefs.DefaultAnimationImportSettings.TargetFps = Math.Clamp(prefs.DefaultAnimationImportSettings.TargetFps, 1, 24);
+            prefs.DefaultAnimationImportSettings.MaxFrames = Math.Clamp(prefs.DefaultAnimationImportSettings.MaxFrames, 1, 256);
 
             prefs.HardwarePreviewBoardPreset = string.IsNullOrWhiteSpace(prefs.HardwarePreviewBoardPreset) ? HardwarePreviewWiringConfig.DefaultBoard : prefs.HardwarePreviewBoardPreset.Trim();
             prefs.HardwarePreviewInterfaceType = string.Equals(prefs.HardwarePreviewInterfaceType, "SPI", StringComparison.OrdinalIgnoreCase) ? "SPI" : "I2C";

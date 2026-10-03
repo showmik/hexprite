@@ -52,6 +52,28 @@ namespace Hexprite.Services
         public int Brightness { get; set; }  // -100 to 100
         public int Contrast { get; set; }    // -100 to 100
         public int DitherAmount { get; set; } = 100; // 0 to 100
+
+        public BitmapImportSettings Clone() => (BitmapImportSettings)MemberwiseClone();
+
+        public void CopyBaseFrom(BitmapImportSettings source)
+        {
+            if (source == null) return;
+            Preset = source.Preset;
+            MaxDimension = source.MaxDimension;
+            Threshold = source.Threshold;
+            AlphaThreshold = source.AlphaThreshold;
+            Invert = source.Invert;
+            DitheringAlgorithm = source.DitheringAlgorithm;
+            ScalingMode = source.ScalingMode;
+            UseSerpentineScanning = source.UseSerpentineScanning;
+            UseGammaCorrection = source.UseGammaCorrection;
+            UseAdaptiveThresholding = source.UseAdaptiveThresholding;
+            PreserveEdges = source.PreserveEdges;
+            Sharpen = source.Sharpen;
+            Brightness = source.Brightness;
+            Contrast = source.Contrast;
+            DitherAmount = source.DitherAmount;
+        }
     }
 
     /// <summary>
