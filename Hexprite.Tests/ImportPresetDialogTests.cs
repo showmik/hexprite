@@ -606,7 +606,7 @@ namespace Hexprite.Tests
 
                     var panel = Assert.IsType<StackPanel>(card.Child);
                     Assert.True(panel.Children.Count >= 2);
-                    var spinner = Assert.IsType<Control>(panel.Children[0]);
+                    var spinner = Assert.IsType<LoadingSpinner>(panel.Children[0]);
                     var label = Assert.IsType<TextBlock>(panel.Children[1]);
                     Assert.Equal("Rendering preview...", label.Text);
                 }
@@ -636,7 +636,7 @@ namespace Hexprite.Tests
 
                     var panel = Assert.IsType<StackPanel>(card.Child);
                     Assert.True(panel.Children.Count >= 2);
-                    var spinner = Assert.IsType<Control>(panel.Children[0]);
+                    var spinner = Assert.IsType<LoadingSpinner>(panel.Children[0]);
                     var label = Assert.IsType<TextBlock>(panel.Children[1]);
                     Assert.Equal("Rendering animation...", label.Text);
                 }

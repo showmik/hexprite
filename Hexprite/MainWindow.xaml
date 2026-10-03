@@ -1249,10 +1249,9 @@
                                       BlurRadius="24" ShadowDepth="6" Opacity="0.5" Direction="270" />
                 </Border.Effect>
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Control Style="{StaticResource ModernSpinnerStyle}"
-                             Width="32" Height="32"
-                             Margin="0,0,0,14"
-                             HorizontalAlignment="Center" />
+                    <views:LoadingSpinner Width="32" Height="32"
+                                          Margin="0,0,0,14"
+                                          HorizontalAlignment="Center" />
                     <TextBlock Text="{Binding ImportStatusMessage, FallbackValue='Importing...'}"
                                Foreground="{DynamicResource Brush.Text.Primary}"
                                FontFamily="{DynamicResource Font.Primary}"

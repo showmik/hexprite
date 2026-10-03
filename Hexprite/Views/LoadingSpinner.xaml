@@ -1,0 +1,15 @@
+<UserControl x:Class="Hexprite.Views.LoadingSpinner"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="24" Height="24"
+             Focusable="False" IsTabStop="False">
+    <Viewbox>
+        <Canvas x:Name="SpinnerCanvas" Width="24" Height="24" RenderTransformOrigin="0.5,0.5">
+            <Ellipse Width="20" Height="20" Canvas.Left="2" Canvas.Top="2"
+                     Stroke="{DynamicResource Brush.Surface.Active}" StrokeThickness="2.5" />
+            <Path Stroke="{DynamicResource Brush.Accent.Base}" StrokeThickness="2.5"
+                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                  Data="M 12 2 A 10 10 0 0 1 22 12" />
+        </Canvas>
+    </Viewbox>
+</UserControl>

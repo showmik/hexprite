@@ -2,6 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:core="clr-namespace:Hexprite.Core"
+        xmlns:views="clr-namespace:Hexprite.Views"
         Title="Import Animation"
         Width="860" Height="650"
         ResizeMode="NoResize"
@@ -515,10 +516,9 @@
                                                           BlurRadius="16" ShadowDepth="3" Opacity="0.45" Direction="270" />
                                     </Border.Effect>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Control Style="{StaticResource ModernSpinnerStyle}"
-                                                 Width="16" Height="16"
-                                                 Margin="0,0,10,0"
-                                                 VerticalAlignment="Center" />
+                                        <views:LoadingSpinner Width="16" Height="16"
+                                                             Margin="0,0,10,0"
+                                                             VerticalAlignment="Center" />
                                         <TextBlock Text="Rendering animation..."
                                                    Foreground="{DynamicResource Brush.Text.Primary}"
                                                    FontFamily="{DynamicResource Font.Primary}"

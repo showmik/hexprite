@@ -41,6 +41,8 @@ namespace Hexprite.Tests
             {
                 var shell = E2ETestHelper.CreateTestShellViewModel();
                 var mainWindow = new MainWindow(shell);
+                mainWindow.Show();
+                mainWindow.Close();
 
                 Assert.NotNull(mainWindow);
 
@@ -113,6 +115,50 @@ namespace Hexprite.Tests
                 var slicerBinding = System.Windows.Data.BindingOperations.GetBinding(slicerItem, MenuItem.CommandProperty);
                 Assert.NotNull(slicerBinding);
                 Assert.Equal(nameof(ShellViewModel.OpenSpriteSheetSlicerCommand), slicerBinding.Path.Path);
+            });
+        }
+
+        [Fact]
+        public void MainWindow_WhenIsImportingIsTrue_ShowsLoadingOverlayWithoutException()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                var shell = E2ETestHelper.CreateTestShellViewModel();
+                shell.IsImporting = true;
+                shell.ImportStatusMessage = "Processing frames...";
+                var mainWindow = new MainWindow(shell);
+                mainWindow.Show();
+                mainWindow.UpdateLayout();
+
+                var spinner = FindLogicalOrVisualChildren<LoadingSpinner>(mainWindow).FirstOrDefault();
+                Assert.NotNull(spinner);
+
+                mainWindow.Close();
+                Assert.NotNull(mainWindow);
+            });
+        }
+
+        [Fact]
+        public void ModernProgressBar_Indeterminate_MeasuresAndAnimatesWithoutFreezableException()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                var pb = new ProgressBar
+                {
+                    IsIndeterminate = true,
+                    Width = 100,
+                    Height = 4
+                };
+                var window = new Window
+                {
+                    Width = 200,
+                    Height = 100,
+                    Content = pb
+                };
+                window.Show();
+                window.UpdateLayout();
+                Assert.True(pb.IsIndeterminate);
+                window.Close();
             });
         }
 

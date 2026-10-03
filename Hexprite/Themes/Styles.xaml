@@ -2048,55 +2048,6 @@
     </Style>
 
     <!-- ═══════════════════════════════════════════════════════════
-         Modern Spinner / Loading Ring
-         ═══════════════════════════════════════════════════════════ -->
-    <Style x:Key="ModernSpinnerStyle" TargetType="{x:Type Control}">
-        <Setter Property="Width" Value="24" />
-        <Setter Property="Height" Value="24" />
-        <Setter Property="Foreground" Value="{DynamicResource Brush.Accent.Base}" />
-        <Setter Property="Background" Value="{DynamicResource Brush.Surface.Active}" />
-        <Setter Property="IsTabStop" Value="False" />
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type Control}">
-                    <Viewbox Width="{TemplateBinding Width}" Height="{TemplateBinding Height}">
-                        <Canvas Width="24" Height="24" RenderTransformOrigin="0.5,0.5">
-                            <Canvas.RenderTransform>
-                                <RotateTransform Angle="0" />
-                            </Canvas.RenderTransform>
-                            <Canvas.Style>
-                                <Style TargetType="Canvas">
-                                    <Style.Triggers>
-                                        <Trigger Property="IsVisible" Value="True">
-                                            <Trigger.EnterActions>
-                                                <BeginStoryboard Name="SpinStoryboard">
-                                                    <Storyboard RepeatBehavior="Forever">
-                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
-                                                                         From="0" To="360" Duration="0:0:0.9" />
-                                                    </Storyboard>
-                                                </BeginStoryboard>
-                                            </Trigger.EnterActions>
-                                            <Trigger.ExitActions>
-                                                <StopStoryboard BeginStoryboardName="SpinStoryboard" />
-                                            </Trigger.ExitActions>
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </Canvas.Style>
-                            <Ellipse Width="20" Height="20" Canvas.Left="2" Canvas.Top="2"
-                                     Stroke="{TemplateBinding Background}" StrokeThickness="2.5" />
-                            <Path Stroke="{TemplateBinding Foreground}" StrokeThickness="2.5"
-                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                  Data="M 12 2 A 10 10 0 0 1 22 12" />
-                        </Canvas>
-                    </Viewbox>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- ═══════════════════════════════════════════════════════════
          Modern ProgressBar Style
          ═══════════════════════════════════════════════════════════ -->
     <Style x:Key="ModernProgressBarStyle" TargetType="{x:Type ProgressBar}">
@@ -2110,22 +2061,20 @@
                     <Border Background="{TemplateBinding Background}"
                             CornerRadius="2"
                             ClipToBounds="True">
-                        <Grid x:Name="PART_Track">
+                        <Canvas x:Name="PART_Track" ClipToBounds="True">
                             <Border x:Name="PART_Indicator"
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
-                                    CornerRadius="2" />
+                                    CornerRadius="2"
+                                    Height="{TemplateBinding Height}" />
                             <Border x:Name="IndeterminateGlow"
                                     Width="80"
-                                    HorizontalAlignment="Left"
+                                    Height="{TemplateBinding Height}"
+                                    Canvas.Left="-80"
                                     Background="{TemplateBinding Foreground}"
                                     CornerRadius="2"
-                                    Visibility="Collapsed">
-                                <Border.RenderTransform>
-                                    <TranslateTransform x:Name="GlowTransform" X="-80" />
-                                </Border.RenderTransform>
-                            </Border>
-                        </Grid>
+                                    Visibility="Collapsed" />
+                        </Canvas>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsIndeterminate" Value="True">
@@ -2134,8 +2083,8 @@
                             <Trigger.EnterActions>
                                 <BeginStoryboard Name="IndeterminateAnim">
                                     <Storyboard RepeatBehavior="Forever">
-                                        <DoubleAnimation Storyboard.TargetName="GlowTransform"
-                                                         Storyboard.TargetProperty="X"
+                                        <DoubleAnimation Storyboard.TargetName="IndeterminateGlow"
+                                                         Storyboard.TargetProperty="(Canvas.Left)"
                                                          From="-80" To="240"
                                                          Duration="0:0:1.2">
                                             <DoubleAnimation.EasingFunction>
