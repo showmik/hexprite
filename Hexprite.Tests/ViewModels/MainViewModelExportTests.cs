@@ -105,5 +105,44 @@ namespace Hexprite.Tests.ViewModels
             Assert.Equal(AnimationExportLayout.DeltaPatches, vm.AnimationLayout);
             Assert.Equal(AnimationExportLayout.DeltaPatches, vm.ExportSettings.AnimationLayout);
         }
+
+        [Fact]
+        public void IsCompressionVisible_WhenAnimationLayoutChanges_NotifiesAndUpdatesVisibility()
+        {
+            var vm = CreateMainViewModel();
+            vm.ExportFormat = ExportFormat.AdafruitGfx;
+            vm.IsAnimationEnabled = true;
+            vm.AnimationLayout = AnimationExportLayout.ArrayOfFrames;
+
+            Assert.True(vm.IsCompressionVisible);
+
+            bool compressionVisibleNotified = false;
+            vm.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.IsCompressionVisible))
+                    compressionVisibleNotified = true;
+            };
+
+            vm.AnimationLayout = AnimationExportLayout.VerticalSpriteSheet;
+
+            Assert.True(compressionVisibleNotified);
+            Assert.False(vm.IsCompressionVisible);
+
+            compressionVisibleNotified = false;
+            vm.AnimationLayout = AnimationExportLayout.DeltaPatches;
+            Assert.False(vm.IsCompressionVisible);
+
+            vm.AnimationLayout = AnimationExportLayout.ArrayOfFrames;
+            Assert.True(compressionVisibleNotified);
+            Assert.True(vm.IsCompressionVisible);
+        }
+
+        [Fact]
+        public void IsCompressionVisible_LiquidCrystalChar_IsAlwaysFalse()
+        {
+            var vm = CreateMainViewModel();
+            vm.ExportFormat = ExportFormat.LiquidCrystalChar;
+            Assert.False(vm.IsCompressionVisible);
+        }
     }
 }

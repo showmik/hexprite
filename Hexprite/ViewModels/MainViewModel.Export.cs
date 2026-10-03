@@ -136,7 +136,7 @@ namespace Hexprite.ViewModels
         public AnimationExportLayout AnimationLayout
         {
             get => _exportSettings.AnimationLayout;
-            set => SetExportSetting(() => _exportSettings.AnimationLayout, v => _exportSettings.AnimationLayout = v, nameof(AnimationLayout), value);
+            set => SetExportSetting(() => _exportSettings.AnimationLayout, v => _exportSettings.AnimationLayout = v, nameof(AnimationLayout), value, [nameof(IsCompressionVisible)]);
         }
 
         public bool UseCommaSeparator
@@ -182,14 +182,16 @@ namespace Hexprite.ViewModels
             set => SetExportSetting(() => _exportSettings.Compression, v => _exportSettings.Compression = v, nameof(Compression), value);
         }
 
-        /// <summary>Compression is only available for standard C/C++ formats (not Raw, MicroPython, or Flipper formats).</summary>
+        /// <summary>Compression is only available for standard C/C++ formats (not Raw, MicroPython, LiquidCrystal, or Flipper formats), and only for ArrayOfFrames when exporting animations.</summary>
         public bool IsCompressionVisible =>
             ExportFormat != ExportFormat.RawHex &&
             ExportFormat != ExportFormat.RawBinary &&
             ExportFormat != ExportFormat.MicroPython &&
+            ExportFormat != ExportFormat.LiquidCrystalChar &&
             ExportFormat != ExportFormat.FlipperCompressedBitmap &&
             ExportFormat != ExportFormat.FlipperXbm &&
-            ExportFormat != ExportFormat.FlipperCanvasIcon;
+            ExportFormat != ExportFormat.FlipperCanvasIcon &&
+            (!IsAnimationEnabled || AnimationLayout == AnimationExportLayout.ArrayOfFrames);
 
         // ── Export output ────────────────────────────────────────────────────
         private Task? _activeTextUpdateTask;

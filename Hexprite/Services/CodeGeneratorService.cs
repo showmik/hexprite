@@ -137,10 +137,14 @@ namespace Hexprite.Services
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            AnimationExportLayout effectiveLayout = isAnimation
+                ? ResolveEffectiveLayout(settings.AnimationLayout, settings.Format, width, height, numFrames, isAnimation)
+                : settings.AnimationLayout;
+
             if (isAnimation && settings.Format != ExportFormat.LiquidCrystalChar)
             {
                 (frames, outputWidth, outputHeight) = FlattenAnimationFrames(
-                    frames, width, height, settings.AnimationLayout, numFrames, cancellationToken);
+                    frames, width, height, effectiveLayout, numFrames, cancellationToken);
             }
 
             // Build byte arrays for each frame
@@ -171,7 +175,7 @@ namespace Hexprite.Services
             // ── Apply compression ────────────────────────────────────────────
             bool compressionActive = _compression != null
                 && settings.Compression != CompressionMode.None
-                && settings.AnimationLayout != AnimationExportLayout.DeltaPatches
+                && (!isAnimation || effectiveLayout == AnimationExportLayout.ArrayOfFrames)
                 && IsCompressionSupported(settings.Format);
 
             var emitData = new List<byte[]>();
@@ -214,10 +218,10 @@ namespace Hexprite.Services
                 && frames.Count > 1
                 && outputWidth <= 255
                 && outputHeight <= 255
-                && settings.AnimationLayout == AnimationExportLayout.DeltaPatches
+                && effectiveLayout == AnimationExportLayout.DeltaPatches
                 && IsDeltaPatchesSupported(settings.Format);
             bool useAnimationBuilder = isAnimation && !compressionActive &&
-                (settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames || settings.Format == ExportFormat.LiquidCrystalChar);
+                (effectiveLayout == AnimationExportLayout.ArrayOfFrames || settings.Format == ExportFormat.LiquidCrystalChar);
 
             if (isDelta)
             {
@@ -245,7 +249,7 @@ namespace Hexprite.Services
             else
             {
                 byte[] data;
-                if (compressionActive && isAnimation && settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames)
+                if (compressionActive && isAnimation && effectiveLayout == AnimationExportLayout.ArrayOfFrames)
                     data = [.. emitData.SelectMany(b => b)];
                 else
                     data = emitData.FirstOrDefault() ?? [];
@@ -267,7 +271,7 @@ namespace Hexprite.Services
                     _                                    => string.Empty,
                 };
 
-                if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames && settings.IncludeDimensionConstants)
+                if (isAnimation && effectiveLayout != AnimationExportLayout.ArrayOfFrames && settings.IncludeDimensionConstants)
                 {
                     string upper = name.ToUpperInvariant();
                     string cHeight16 = $"const uint16_t {upper}_HEIGHT = {outputHeight};";
@@ -316,13 +320,17 @@ namespace Hexprite.Services
 
             if (compressionActive)
             {
-                bool isArrayOfFrames = isAnimation && settings.AnimationLayout == AnimationExportLayout.ArrayOfFrames;
+                bool isArrayOfFrames = isAnimation && effectiveLayout == AnimationExportLayout.ArrayOfFrames;
                 coreOutput = WrapWithCompression(coreOutput, name, settings, uncompressedFrameSize, emitData, isArrayOfFrames);
             }
 
             if (settings.GenerateFullSketch)
             {
-                return WrapWithSketch(coreOutput, name, outputWidth, outputHeight, numFrames, isAnimation, settings, compressionActive, uncompressedFrameSize, frameDelays);
+                var effectiveCfg = (settings.AnimationLayout != effectiveLayout)
+                    ? settings.Clone()
+                    : settings;
+                effectiveCfg.AnimationLayout = effectiveLayout;
+                return WrapWithSketch(coreOutput, name, outputWidth, outputHeight, numFrames, isAnimation, effectiveCfg, compressionActive, uncompressedFrameSize, frameDelays);
             }
 
             return coreOutput;
@@ -665,7 +673,7 @@ namespace Hexprite.Services
             if (frameDelays != null && frameDelays.Exists(d => d != 1))
             {
                 sb.AppendLine();
-                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t PROGMEM {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"const uint8_t {name.ToUpperInvariant()}_DELAYS[{frameDelays.Count}] = {{");
                 sb.AppendLine(CultureInfo.InvariantCulture, $"  {string.Join(", ", frameDelays.Select(d => cfg.UppercaseHex ? HexUpper[Math.Clamp(d, 0, 255)] : HexLower[Math.Clamp(d, 0, 255)]))}");
                 sb.AppendLine("};");
             }
@@ -2060,10 +2068,31 @@ namespace Hexprite.Services
             int outputHeight = height;
             int numFrames = frames.Count;
 
+            AnimationExportLayout effectiveLayout = isAnimation
+                ? ResolveEffectiveLayout(settings.AnimationLayout, settings.Format, width, height, numFrames, isAnimation)
+                : settings.AnimationLayout;
+
+            if (isAnimation && effectiveLayout == AnimationExportLayout.DeltaPatches)
+            {
+                bool isXbm = settings.Format == ExportFormat.U8g2DrawXBM;
+                var opt = DeltaAnimationOptimizer.Optimize(frames, width, height, lsbFirst: isXbm);
+                int deltaBytesTotal = 0;
+                foreach (var df in opt.DeltaFrames)
+                {
+                    deltaBytesTotal += 1;
+                    foreach (var p in df.Patches)
+                    {
+                        deltaBytesTotal += 4 + p.Data.Length;
+                    }
+                }
+                int offsetsBytes = Math.Max(1, opt.DeltaFrames.Count) * 2;
+                return opt.Keyframe0.Length + deltaBytesTotal + offsetsBytes;
+            }
+
             if (isAnimation && settings.Format != ExportFormat.LiquidCrystalChar)
             {
                 (frames, outputWidth, outputHeight) = FlattenAnimationFrames(
-                    frames, width, height, settings.AnimationLayout, numFrames);
+                    frames, width, height, effectiveLayout, numFrames);
             }
 
             int uncompressedFrameSize;
@@ -2077,7 +2106,7 @@ namespace Hexprite.Services
 
             if (settings.Format == ExportFormat.Indexed2D)
             {
-                if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames)
+                if (isAnimation && effectiveLayout != AnimationExportLayout.ArrayOfFrames)
                 {
                     uncompressedFrameSize = outputWidth * outputHeight;
                     totalUncompressed = uncompressedFrameSize;
@@ -2090,7 +2119,7 @@ namespace Hexprite.Services
                 return totalUncompressed;
             }
 
-            if (isAnimation && settings.AnimationLayout != AnimationExportLayout.ArrayOfFrames)
+            if (isAnimation && effectiveLayout != AnimationExportLayout.ArrayOfFrames)
             {
                 uncompressedFrameSize = outputHeight * BytesPerRow(outputWidth);
                 totalUncompressed = uncompressedFrameSize;
@@ -2103,6 +2132,7 @@ namespace Hexprite.Services
 
             bool compressionActive = compression != null
                 && settings.Compression != CompressionMode.None
+                && (!isAnimation || effectiveLayout == AnimationExportLayout.ArrayOfFrames)
                 && IsCompressionSupported(settings.Format);
 
             if (!compressionActive)
@@ -2144,6 +2174,7 @@ namespace Hexprite.Services
             format != ExportFormat.MicroPython &&
             format != ExportFormat.LiquidCrystalChar &&
             format != ExportFormat.FlipperCompressedBitmap &&
+            format != ExportFormat.FlipperXbm &&
             format != ExportFormat.FlipperCanvasIcon;
 
         /// <summary>
@@ -2155,6 +2186,43 @@ namespace Hexprite.Services
                       ExportFormat.U8g2DrawBitmap or
                       ExportFormat.U8g2DrawXBM or
                       ExportFormat.PlainCArray;
+
+        /// <summary>
+        /// Indicates whether sprite sheet layouts (vertical/horizontal) are supported for the specified format.
+        /// Formats like LiquidCrystalChar and Flipper standalone icons/sketches operate strictly on individual frames.
+        /// </summary>
+        public static bool IsSpriteSheetSupported(ExportFormat format) =>
+            format != ExportFormat.LiquidCrystalChar &&
+            format != ExportFormat.FlipperCompressedBitmap &&
+            format != ExportFormat.FlipperXbm &&
+            format != ExportFormat.FlipperCanvasIcon;
+
+        /// <summary>
+        /// Resolves the effective layout to use based on format capabilities and sprite dimensions.
+        /// Unsupported combinations fall back gracefully to ArrayOfFrames so all animation frames are preserved.
+        /// </summary>
+        public static AnimationExportLayout ResolveEffectiveLayout(
+            AnimationExportLayout layout, ExportFormat format, int width, int height, int numFrames, bool isAnimation)
+        {
+            if (!isAnimation || numFrames <= 1)
+                return AnimationExportLayout.ArrayOfFrames;
+
+            if (layout == AnimationExportLayout.DeltaPatches)
+            {
+                if (width <= 255 && height <= 255 && IsDeltaPatchesSupported(format))
+                    return AnimationExportLayout.DeltaPatches;
+                return AnimationExportLayout.ArrayOfFrames;
+            }
+
+            if (layout is AnimationExportLayout.VerticalSpriteSheet or AnimationExportLayout.HorizontalSpriteSheet)
+            {
+                if (IsSpriteSheetSupported(format))
+                    return layout;
+                return AnimationExportLayout.ArrayOfFrames;
+            }
+
+            return AnimationExportLayout.ArrayOfFrames;
+        }
 
         // ── Name sanitiser ────────────────────────────────────────────────────
 
@@ -2334,6 +2402,24 @@ namespace Hexprite.Services
                 sb.AppendLine("}");
                 sb.AppendLine();
             }
+            if (isAnimation && cfg.AnimationLayout == AnimationExportLayout.HorizontalSpriteSheet)
+            {
+                sb.AppendLine("// ─── Horizontal Sprite Sheet Rendering Helper ────────────────────────────");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"void drawHorizontalFrame(int16_t x, int16_t y, int frame) {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t srcX = frame * {upperName}_FRAME_WIDTH;");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  int16_t totalBytesPerRow = ({upperName}_WIDTH + 7) / 8;");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"  for (int16_t r = 0; r < {upperName}_FRAME_HEIGHT; r++) {{");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"    for (int16_t c = 0; c < {upperName}_FRAME_WIDTH; c++) {{");
+                sb.AppendLine("      int16_t px = srcX + c;");
+                sb.AppendLine(CultureInfo.InvariantCulture, $"      uint8_t byteVal = pgm_read_byte(&{name}[r * totalBytesPerRow + (px / 8)]);");
+                sb.AppendLine("      if (byteVal & (0x80 >> (px % 8))) {");
+                sb.AppendLine("        display.drawPixel(x + c, y + r, SSD1306_WHITE);");
+                sb.AppendLine("      }");
+                sb.AppendLine("    }");
+                sb.AppendLine("  }");
+                sb.AppendLine("}");
+                sb.AppendLine();
+            }
             sb.AppendLine("// ─── Arduino Setup & Main Loop ───────────────────────────────────────────────");
             sb.AppendLine();
             sb.AppendLine("void setup() {");
@@ -2417,7 +2503,7 @@ namespace Hexprite.Services
                         sb.AppendLine("      display.clearDisplay();");
                         sb.AppendLine(CultureInfo.InvariantCulture, $"      display.drawBitmap(x, y, {name}_FRAME_0, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
                         sb.AppendLine("    } else {");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[pgm_read_word(&{upperName}_FRAME_OFFSETS[currentFrame - 1])]);");
                         sb.AppendLine("    }");
                         sb.AppendLine("    display.display();");
                     }
@@ -2439,7 +2525,7 @@ namespace Hexprite.Services
                     {
                         // Horizontal sprite sheet
                         sb.AppendLine("    display.clearDisplay();");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {name}, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    drawHorizontalFrame(x, y, currentFrame);");
                         sb.AppendLine("    display.display();");
                     }
 
@@ -2479,7 +2565,7 @@ namespace Hexprite.Services
                     }
                     sb.AppendLine();
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames - 1}; i++) {{"));
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[pgm_read_word(&{upperName}_FRAME_OFFSETS[i])]);");
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
@@ -2530,7 +2616,7 @@ namespace Hexprite.Services
                     // Horizontal sprite sheet
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
                     sb.AppendLine("    display.clearDisplay();");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    display.drawBitmap(x - (i * {upperName}_FRAME_WIDTH), y, {name}, {upperName}_WIDTH, {upperName}_HEIGHT, SSD1306_WHITE);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawHorizontalFrame(x, y, i);");
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
@@ -2660,7 +2746,7 @@ namespace Hexprite.Services
                         else
                             sb.AppendLine(CultureInfo.InvariantCulture, $"      u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}_FRAME_0);");
                         sb.AppendLine("    } else {");
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[currentFrame - 1]]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"      drawDeltaFrame(x, y, &{name}_DELTAS[pgm_read_word(&{upperName}_FRAME_OFFSETS[currentFrame - 1])]);");
                         sb.AppendLine("    }");
                         sb.AppendLine("    u8g2.sendBuffer();");
                     }
@@ -2696,10 +2782,12 @@ namespace Hexprite.Services
                         else
                         {
                             // Horizontal sprite sheet
+                            sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.setClipWindow(x, y, x + {upperName}_FRAME_WIDTH, y + {upperName}_FRAME_HEIGHT);");
                             if (isXbm)
                                 sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
                             else
                                 sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (currentFrame * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                            sb.AppendLine("    u8g2.setMaxClipWindow();");
                         }
 
                         sb.AppendLine("    u8g2.sendBuffer();");
@@ -2739,7 +2827,7 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
                     sb.AppendLine();
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames - 1}; i++) {{"));
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[{upperName}_FRAME_OFFSETS[i]]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[pgm_read_word(&{upperName}_FRAME_OFFSETS[i])]);");
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i + 1]);");
@@ -2784,10 +2872,12 @@ namespace Hexprite.Services
                     // Horizontal sprite sheet
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"  for (int i = 0; i < {numFrames}; i++) {{"));
                     sb.AppendLine("    u8g2.clearBuffer();");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.setClipWindow(x, y, x + {upperName}_FRAME_WIDTH, y + {upperName}_FRAME_HEIGHT);");
                     if (isXbm)
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    u8g2.drawXBMP(x - (i * {upperName}_FRAME_WIDTH), y, {upperName}_WIDTH, {upperName}_HEIGHT, {name});");
                     else
                         sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x - (i * {upperName}_FRAME_WIDTH), y, {bytesPerRow}, {upperName}_HEIGHT, {name});"));
+                    sb.AppendLine("    u8g2.setMaxClipWindow();");
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
@@ -2909,10 +2999,14 @@ namespace Hexprite.Services
                 {
                     // Horizontal sprite sheet
                     sb.AppendLine(CultureInfo.InvariantCulture, $"fb = framebuf.FrameBuffer({name}, {upperName}_WIDTH, {upperName}_HEIGHT, framebuf.MONO_HLSB, (({upperName}_WIDTH + 7) // 8) * 8)");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"frame_buf = bytearray((({upperName}_FRAME_WIDTH + 7) // 8) * {upperName}_FRAME_HEIGHT)");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"frame_fb = framebuf.FrameBuffer(frame_buf, {upperName}_FRAME_WIDTH, {upperName}_FRAME_HEIGHT, framebuf.MONO_HLSB, (({upperName}_FRAME_WIDTH + 7) // 8) * 8)");
                     sb.AppendLine("while True:");
                     sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    for i in range({numFrames}):"));
+                    sb.AppendLine("        frame_fb.fill(0)");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"        frame_fb.blit(fb, -(i * {upperName}_FRAME_WIDTH), 0)");
                     sb.AppendLine("        oled.fill(0)");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"        oled.blit(fb, x - (i * {upperName}_FRAME_WIDTH), y)");
+                    sb.AppendLine("        oled.blit(frame_fb, x, y)");
                     sb.AppendLine("        oled.show()");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {

@@ -2192,7 +2192,7 @@ const uint8_t anim[2][16] = {
         Assert.Contains("display.drawBitmap(x + px, y + py, p, pw, ph, SSD1306_WHITE, SSD1306_BLACK);", sketch);
         Assert.Contains("if (currentFrame == 0) {", sketch);
         Assert.Contains("display.drawBitmap(x, y, deltaSketch_FRAME_0", sketch);
-        Assert.Contains("drawDeltaFrame(x, y, &deltaSketch_DELTAS[DELTASKETCH_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &deltaSketch_DELTAS[pgm_read_word(&DELTASKETCH_FRAME_OFFSETS[currentFrame - 1])]);", sketch);
         Assert.Contains("millis()", sketch);
         Assert.DoesNotContain("delay(", sketch);
     }
@@ -2225,7 +2225,7 @@ const uint8_t anim[2][16] = {
         Assert.Contains("u8g2.setDrawColor(1);", sketch);
         Assert.Contains("u8g2.drawBitmap(x + px, y + py, (pw + 7) / 8, ph, p);", sketch);
         Assert.Contains("u8g2.sendBuffer();", sketch);
-        Assert.Contains("drawDeltaFrame(x, y, &u8g2Delta_DELTAS[U8G2DELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &u8g2Delta_DELTAS[pgm_read_word(&U8G2DELTA_FRAME_OFFSETS[currentFrame - 1])]);", sketch);
     }
 
     [Fact]
@@ -2252,7 +2252,7 @@ const uint8_t anim[2][16] = {
 
         Assert.Contains("void drawDeltaFrame(int16_t x, int16_t y, const uint8_t* p)", sketch);
         Assert.Contains("u8g2.drawXBMP(x + px, y + py, pw, ph, p);", sketch);
-        Assert.Contains("drawDeltaFrame(x, y, &u8g2XbmDelta_DELTAS[U8G2XBMDELTA_FRAME_OFFSETS[currentFrame - 1]]);", sketch);
+        Assert.Contains("drawDeltaFrame(x, y, &u8g2XbmDelta_DELTAS[pgm_read_word(&U8G2XBMDELTA_FRAME_OFFSETS[currentFrame - 1])]);", sketch);
     }
 
     [Fact]
