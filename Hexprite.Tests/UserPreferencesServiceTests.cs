@@ -97,4 +97,41 @@ public class UserPreferencesServiceTests : IDisposable
         Assert.Equal(128, UserPreferencesService.GetDefaultBitmapImportSettings().Threshold);
         Assert.Equal(8, UserPreferencesService.GetDefaultAnimationImportSettings().TargetFps);
     }
+
+    [Fact]
+    public void MigrateLegacyBitmapImportSettings_ImportsValuesAndRemovesLegacyFile()
+    {
+        string legacyFile = Path.Combine(Path.GetTempPath(), $"legacy_import_{Guid.NewGuid():N}.json");
+        try
+        {
+            var legacy = new BitmapImportSettings
+            {
+                Threshold = 142,
+                DitheringAlgorithm = BitmapDitheringAlgorithm.Bayer,
+                Contrast = 25,
+                Invert = true
+            };
+            File.WriteAllText(legacyFile, System.Text.Json.JsonSerializer.Serialize(legacy));
+
+            bool migrated = UserPreferencesService.MigrateLegacyImportSettings(legacyFile);
+            Assert.True(migrated);
+
+            var loadedBmp = UserPreferencesService.GetDefaultBitmapImportSettings();
+            Assert.Equal(142, loadedBmp.Threshold);
+            Assert.Equal(BitmapDitheringAlgorithm.Bayer, loadedBmp.DitheringAlgorithm);
+            Assert.Equal(25, loadedBmp.Contrast);
+            Assert.True(loadedBmp.Invert);
+
+            var loadedAnim = UserPreferencesService.GetDefaultAnimationImportSettings();
+            Assert.Equal(142, loadedAnim.Threshold);
+            Assert.True(loadedAnim.Invert);
+
+            Assert.False(File.Exists(legacyFile));
+        }
+        finally
+        {
+            try { if (File.Exists(legacyFile)) File.Delete(legacyFile); } catch { }
+        }
+    }
 }
+

@@ -300,6 +300,36 @@ namespace Hexprite.Services
             });
         }
 
+        public static bool MigrateLegacyImportSettings(string legacyFilePath)
+        {
+            if (string.IsNullOrWhiteSpace(legacyFilePath) || !File.Exists(legacyFilePath)) return false;
+            try
+            {
+                string json = SafeFileIo.ReadAllTextWithRetry(legacyFilePath);
+                if (string.IsNullOrWhiteSpace(json)) return false;
+
+                var legacy = JsonSerializer.Deserialize<BitmapImportSettings>(json);
+                if (legacy == null) return false;
+
+                SaveImportSettings(legacy);
+
+                try
+                {
+                    File.Delete(legacyFilePath);
+                }
+                catch (Exception ex)
+                {
+                    HandledErrorReporter.Warning(ex, "UserPreferencesService.MigrateLegacyImportSettings.DeleteLegacyFailed", new { legacyFilePath });
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                HandledErrorReporter.Warning(ex, "UserPreferencesService.MigrateLegacyImportSettings.Failed", new { legacyFilePath });
+                return false;
+            }
+        }
+
         public static void AddRecentFile(string path)
         {
             if (string.IsNullOrWhiteSpace(path) || !IsSupportedRecentFile(path)) return;
@@ -355,6 +385,8 @@ namespace Hexprite.Services
             string settingsFile = EffectiveSettingsFile;
             string backupSettingsFile = EffectiveBackupSettingsFile;
 
+            UserPreferences? result = null;
+
             // Primary attempt: settingsFile
             if (File.Exists(settingsFile))
             {
@@ -366,7 +398,7 @@ namespace Hexprite.Services
                         var loaded = JsonSerializer.Deserialize<UserPreferences>(json, JsonOptions);
                         if (loaded != null)
                         {
-                            return Normalize(loaded);
+                            result = Normalize(loaded);
                         }
                     }
                 }
@@ -377,7 +409,7 @@ namespace Hexprite.Services
             }
 
             // Fallback attempt: backupSettingsFile
-            if (File.Exists(backupSettingsFile))
+            if (result == null && File.Exists(backupSettingsFile))
             {
                 try
                 {
@@ -387,7 +419,7 @@ namespace Hexprite.Services
                         var recovered = JsonSerializer.Deserialize<UserPreferences>(bakJson, JsonOptions);
                         if (recovered != null)
                         {
-                            return Normalize(recovered);
+                            result = Normalize(recovered);
                         }
                     }
                 }
@@ -397,7 +429,35 @@ namespace Hexprite.Services
                 }
             }
 
-            return new UserPreferences();
+            result ??= new UserPreferences();
+
+            // Migrate legacy bitmap-import-settings.json if present
+            try
+            {
+                string legacyImportFile = Path.Combine(EffectiveSettingsDir, "bitmap-import-settings.json");
+                if (File.Exists(legacyImportFile))
+                {
+                    string json = SafeFileIo.ReadAllTextWithRetry(legacyImportFile);
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var legacy = JsonSerializer.Deserialize<BitmapImportSettings>(json);
+                        if (legacy != null)
+                        {
+                            result.DefaultBitmapImportSettings = legacy.Clone();
+                            result.DefaultAnimationImportSettings.CopyBaseFrom(legacy);
+                            Normalize(result);
+                            SaveToDisk(result);
+                        }
+                    }
+                    try { File.Delete(legacyImportFile); } catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                HandledErrorReporter.Warning(ex, "UserPreferencesService.LoadFromDisk.MigrateLegacyFailed");
+            }
+
+            return result;
         }
 
         private static void SaveToDisk(UserPreferences prefs)
