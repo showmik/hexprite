@@ -113,8 +113,8 @@ namespace Hexprite.Services
         public ImageExportSettings DefaultImageExportSettings { get; set; } = new();
 
         // Import Defaults
-        public BitmapImportSettings DefaultBitmapImportSettings { get; set; } = new();
-        public AnimationImportSettings DefaultAnimationImportSettings { get; set; } = new();
+        public BitmapImportSettings DefaultBitmapImportSettings { get; set; } = new() { MaxDimension = SpriteState.MaxDimension };
+        public AnimationImportSettings DefaultAnimationImportSettings { get; set; } = new() { MaxDimension = SpriteState.MaxDimension };
     }
 
     public static class UserPreferencesService
@@ -257,7 +257,7 @@ namespace Hexprite.Services
             Update(prefs =>
             {
                 var sanitizedBase = settings.Clone();
-                sanitizedBase.MaxDimension = SpriteState.MaxDimension;
+                sanitizedBase.MaxDimension = Math.Clamp(settings.MaxDimension, 1, SpriteState.MaxDimension);
                 sanitizedBase.Threshold = Math.Clamp(sanitizedBase.Threshold, 0, 255);
                 sanitizedBase.AlphaThreshold = Math.Clamp(sanitizedBase.AlphaThreshold, 0, 255);
                 sanitizedBase.Brightness = Math.Clamp(sanitizedBase.Brightness, -100, 100);
@@ -267,7 +267,7 @@ namespace Hexprite.Services
                 if (settings is AnimationImportSettings anim)
                 {
                     var animClone = anim.Clone();
-                    animClone.MaxDimension = SpriteState.MaxDimension;
+                    animClone.MaxDimension = Math.Clamp(anim.MaxDimension, 1, SpriteState.MaxDimension);
                     animClone.TargetFps = Math.Clamp(animClone.TargetFps, 1, 24);
                     animClone.MaxFrames = Math.Clamp(animClone.MaxFrames, 1, 256);
                     prefs.DefaultAnimationImportSettings = animClone;
@@ -295,8 +295,8 @@ namespace Hexprite.Services
         {
             Update(p =>
             {
-                p.DefaultBitmapImportSettings = new BitmapImportSettings();
-                p.DefaultAnimationImportSettings = new AnimationImportSettings();
+                p.DefaultBitmapImportSettings = new BitmapImportSettings { MaxDimension = SpriteState.MaxDimension };
+                p.DefaultAnimationImportSettings = new AnimationImportSettings { MaxDimension = SpriteState.MaxDimension };
             });
         }
 
@@ -554,8 +554,8 @@ namespace Hexprite.Services
                 IsImportExpanded = prefs.IsImportExpanded,
                 DefaultExportSettings = (prefs.DefaultExportSettings ?? new ExportSettings()).Clone(),
                 DefaultImageExportSettings = (prefs.DefaultImageExportSettings ?? new ImageExportSettings()).Clone(),
-                DefaultBitmapImportSettings = (prefs.DefaultBitmapImportSettings ?? new BitmapImportSettings()).Clone(),
-                DefaultAnimationImportSettings = (prefs.DefaultAnimationImportSettings ?? new AnimationImportSettings()).Clone(),
+                DefaultBitmapImportSettings = (prefs.DefaultBitmapImportSettings ?? new BitmapImportSettings { MaxDimension = SpriteState.MaxDimension }).Clone(),
+                DefaultAnimationImportSettings = (prefs.DefaultAnimationImportSettings ?? new AnimationImportSettings { MaxDimension = SpriteState.MaxDimension }).Clone(),
             });
         }
 
@@ -582,16 +582,22 @@ namespace Hexprite.Services
             prefs.DefaultImageExportSettings.Scale = Math.Clamp(prefs.DefaultImageExportSettings.Scale, 1, 8);
             prefs.DefaultImageExportSettings.GifFps = Math.Clamp(prefs.DefaultImageExportSettings.GifFps, 1, 60);
 
-            prefs.DefaultBitmapImportSettings ??= new BitmapImportSettings();
-            prefs.DefaultBitmapImportSettings.MaxDimension = SpriteState.MaxDimension;
+            prefs.DefaultBitmapImportSettings ??= new BitmapImportSettings { MaxDimension = SpriteState.MaxDimension };
+            if (prefs.DefaultBitmapImportSettings.MaxDimension <= 0 || prefs.DefaultBitmapImportSettings.MaxDimension > SpriteState.MaxDimension)
+            {
+                prefs.DefaultBitmapImportSettings.MaxDimension = SpriteState.MaxDimension;
+            }
             prefs.DefaultBitmapImportSettings.Threshold = Math.Clamp(prefs.DefaultBitmapImportSettings.Threshold, 0, 255);
             prefs.DefaultBitmapImportSettings.AlphaThreshold = Math.Clamp(prefs.DefaultBitmapImportSettings.AlphaThreshold, 0, 255);
             prefs.DefaultBitmapImportSettings.Brightness = Math.Clamp(prefs.DefaultBitmapImportSettings.Brightness, -100, 100);
             prefs.DefaultBitmapImportSettings.Contrast = Math.Clamp(prefs.DefaultBitmapImportSettings.Contrast, -100, 100);
             prefs.DefaultBitmapImportSettings.DitherAmount = Math.Clamp(prefs.DefaultBitmapImportSettings.DitherAmount, 0, 100);
 
-            prefs.DefaultAnimationImportSettings ??= new AnimationImportSettings();
-            prefs.DefaultAnimationImportSettings.MaxDimension = SpriteState.MaxDimension;
+            prefs.DefaultAnimationImportSettings ??= new AnimationImportSettings { MaxDimension = SpriteState.MaxDimension };
+            if (prefs.DefaultAnimationImportSettings.MaxDimension <= 0 || prefs.DefaultAnimationImportSettings.MaxDimension > SpriteState.MaxDimension)
+            {
+                prefs.DefaultAnimationImportSettings.MaxDimension = SpriteState.MaxDimension;
+            }
             prefs.DefaultAnimationImportSettings.Threshold = Math.Clamp(prefs.DefaultAnimationImportSettings.Threshold, 0, 255);
             prefs.DefaultAnimationImportSettings.AlphaThreshold = Math.Clamp(prefs.DefaultAnimationImportSettings.AlphaThreshold, 0, 255);
             prefs.DefaultAnimationImportSettings.Brightness = Math.Clamp(prefs.DefaultAnimationImportSettings.Brightness, -100, 100);

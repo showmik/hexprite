@@ -133,5 +133,20 @@ public class UserPreferencesServiceTests : IDisposable
             try { if (File.Exists(legacyFile)) File.Delete(legacyFile); } catch { }
         }
     }
+
+    [Fact]
+    public void SaveImportSettings_PersistsMaxDimension()
+    {
+        var settings = new BitmapImportSettings { MaxDimension = 64 };
+        UserPreferencesService.SaveImportSettings(settings);
+        var loaded = UserPreferencesService.GetDefaultBitmapImportSettings();
+        Assert.Equal(64, loaded.MaxDimension);
+
+        var anim = new AnimationImportSettings { MaxDimension = 96 };
+        UserPreferencesService.SaveImportSettings(anim);
+        var loadedAnim = UserPreferencesService.GetDefaultAnimationImportSettings();
+        Assert.Equal(96, loadedAnim.MaxDimension);
+    }
 }
+
 

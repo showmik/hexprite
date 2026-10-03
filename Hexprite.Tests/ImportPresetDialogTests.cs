@@ -528,5 +528,64 @@ namespace Hexprite.Tests
                 }
             });
         }
+
+        [Fact]
+        public void ImportBitmapDialog_WhenInitialSettingsHasCustomMaxDimension_PrePopulatesMaxDimension()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempPng(128, 128);
+                try
+                {
+                    var initialSettings = new BitmapImportSettings
+                    {
+                        MaxDimension = 48
+                    };
+
+                    using var dlg = new ImportBitmapDialog(tempFile, initialSettings);
+                    var txtMax = (TextBox)dlg.FindName("TxtMaxDimension");
+                    var sldMax = (Slider)dlg.FindName("SldMaxDimension");
+
+                    Assert.NotNull(txtMax);
+                    Assert.NotNull(sldMax);
+                    Assert.Equal("48", txtMax.Text);
+                    Assert.Equal(48, (int)sldMax.Value);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
+
+        [Fact]
+        public void ImportAnimationDialog_WhenInitialSettingsHasCustomMaxDimension_PrePopulatesMaxDimension()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                string tempFile = CreateTempGif(128, 128, frameCount: 2);
+                try
+                {
+                    var initialSettings = new AnimationImportSettings
+                    {
+                        MaxDimension = 48
+                    };
+
+                    using var dlg = new ImportAnimationDialog(tempFile, initialSettings);
+                    var txtMax = (TextBox)dlg.FindName("TxtMaxDimension");
+                    var sldMax = (Slider)dlg.FindName("SldMaxDimension");
+
+                    Assert.NotNull(txtMax);
+                    Assert.NotNull(sldMax);
+                    Assert.Equal("48", txtMax.Text);
+                    Assert.Equal(48, (int)sldMax.Value);
+                }
+                finally
+                {
+                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                }
+            });
+        }
     }
 }
+
