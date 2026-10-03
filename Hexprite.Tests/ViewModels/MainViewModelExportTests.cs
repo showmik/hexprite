@@ -204,5 +204,26 @@ namespace Hexprite.Tests.ViewModels
             Assert.Equal(0, vm.BytesPerLine);
             Assert.Equal("keepMyName", vm.SpriteName);
         }
+
+        [Fact]
+        public void ImageExport_PrepopulatesFromUserPreferences_AndSavesOnConfirm()
+        {
+            UserPreferencesService.Update(p =>
+            {
+                p.DefaultImageExportSettings.Scale = 6;
+                p.DefaultImageExportSettings.Format = ImageExportFormat.Bmp;
+                p.DefaultImageExportSettings.GifFps = 20;
+            });
+
+            var vm = CreateMainViewModel();
+            Assert.Null(vm.SpriteState.ImageExportSettings);
+
+            // Initial resolution must yield saved preferences
+            var initial = vm.SpriteState.ImageExportSettings 
+                ?? UserPreferencesService.GetDefaultImageExportSettings();
+            Assert.Equal(6, initial.Scale);
+            Assert.Equal(ImageExportFormat.Bmp, initial.Format);
+            Assert.Equal(20, initial.GifFps);
+        }
     }
 }

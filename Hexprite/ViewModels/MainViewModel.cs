@@ -3392,11 +3392,13 @@ namespace Hexprite.ViewModels
 
         private void ExecuteExportImage()
         {
-            var settings = SpriteState.ImageExportSettings ?? new ImageExportSettings();
+            var settings = SpriteState.ImageExportSettings 
+                ?? UserPreferencesService.GetDefaultImageExportSettings();
             var newSettings = _dialogService.ShowExportImageDialog(settings, SpriteState);
             if (newSettings == null) return;
 
             SpriteState.ImageExportSettings = newSettings;
+            UserPreferencesService.Update(p => p.DefaultImageExportSettings = newSettings.Clone());
             IsDirty = true;
 
             string filter = newSettings.Format switch

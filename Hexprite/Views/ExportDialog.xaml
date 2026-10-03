@@ -226,20 +226,27 @@
                 </TabItem>
             </TabControl>
 
-            <!-- OK / Cancel -->
+            <!-- OK / Cancel / Reset Defaults -->
             <Border Grid.Row="2" Background="{DynamicResource Brush.Surface.Panel}" Padding="12" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource Brush.Border.Separator}">
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Cancel"
-                            Width="90" MinHeight="30"
+                <DockPanel LastChildFill="False">
+                    <Button x:Name="BtnResetDefaults" Content="Reset to Defaults"
+                            DockPanel.Dock="Left"
+                            MinHeight="30" Padding="12,4"
                             Style="{StaticResource ModernButtonStyle}"
-                            Margin="0,0,8,0"
-                            Click="Cancel_Click" />
-                    <Button Content="Export"
-                            Width="120" MinHeight="30"
-                            Style="{StaticResource AccentButtonStyle}"
-                            Click="Export_Click"
-                            IsDefault="True" />
-                </StackPanel>
+                            Click="BtnResetDefaults_Click" />
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                        <Button Content="Cancel"
+                                Width="90" MinHeight="30"
+                                Style="{StaticResource ModernButtonStyle}"
+                                Margin="0,0,8,0"
+                                Click="Cancel_Click" />
+                        <Button Content="Export"
+                                Width="120" MinHeight="30"
+                                Style="{StaticResource AccentButtonStyle}"
+                                Click="Export_Click"
+                                IsDefault="True" />
+                    </StackPanel>
+                </DockPanel>
             </Border>
         </Grid>
     </Border>

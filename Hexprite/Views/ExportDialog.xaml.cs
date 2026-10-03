@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using Hexprite.Core;
+using Hexprite.Services;
 
 namespace Hexprite.Views
 {
@@ -161,6 +162,15 @@ namespace Hexprite.Views
         private void Cancel_Click(object sender, RoutedEventArgs e)
         {
             DialogResult = false;
+        }
+
+        private void BtnResetDefaults_Click(object sender, RoutedEventArgs e)
+        {
+            UserPreferencesService.ResetDefaultImageExportSettings();
+            Result = UserPreferencesService.GetDefaultImageExportSettings();
+            LoadSettings(Result);
+            UpdateContextualState();
+            UpdatePreviewText();
         }
 
         private void Export_Click(object sender, RoutedEventArgs e)
