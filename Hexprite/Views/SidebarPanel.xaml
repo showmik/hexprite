@@ -749,10 +749,23 @@
                                     Margin="0,0,0,8">
                                 <StackPanel>
                                     <!-- Format selector -->
-                                    <TextBlock Text="Format"
-                                               Foreground="{DynamicResource Brush.Text.Muted}"
-                                               FontSize="10" FontWeight="SemiBold"
-                                               Margin="0,0,0,4"/>
+                                    <DockPanel Margin="0,0,0,4">
+                                        <TextBlock Text="Format"
+                                                   DockPanel.Dock="Left"
+                                                   Foreground="{DynamicResource Brush.Text.Muted}"
+                                                   FontSize="10" FontWeight="SemiBold"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Command="{Binding ResetExportSettingsCommand}"
+                                                DockPanel.Dock="Right"
+                                                ToolTip="Reset Export Settings to Factory Defaults"
+                                                Style="{StaticResource CompactIconButtonStyle}"
+                                                Width="20" Height="20" MinWidth="20" MinHeight="20"
+                                                Focusable="False">
+                                            <Path Data="M12,5V1L7,6L12,11V7C15.31,7 18,9.69 18,13C18,16.31 15.31,19 12,19C8.69,19 6,16.31 6,13H4C4,17.42 7.58,21 12,21C16.42,21 20,17.42 20,13C20,8.58 16.42,5 12,5Z"
+                                                  Fill="{DynamicResource Brush.Text.Muted}"
+                                                  Stretch="Uniform" Width="11" Height="11"/>
+                                        </Button>
+                                    </DockPanel>
                                     <ComboBox x:Name="CboFormat"
                                               Style="{StaticResource ModernComboBoxStyle}"
                                               Height="26"
