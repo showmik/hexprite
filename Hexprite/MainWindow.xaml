@@ -1233,7 +1233,9 @@
         </Grid>
 
         <!-- Loading Overlay -->
-        <Grid Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibilityConverter}}"
+        <Grid Grid.Row="0"
+              Grid.RowSpan="5"
+              Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibilityConverter}}"
               Background="#66000000"
               Panel.ZIndex="1000">
             <Border HorizontalAlignment="Center"

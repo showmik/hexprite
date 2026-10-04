@@ -2061,20 +2061,21 @@
                     <Border Background="{TemplateBinding Background}"
                             CornerRadius="2"
                             ClipToBounds="True">
-                        <Canvas x:Name="PART_Track" ClipToBounds="True">
+                        <Grid x:Name="PART_Track">
                             <Border x:Name="PART_Indicator"
                                     HorizontalAlignment="Left"
                                     Background="{TemplateBinding Foreground}"
-                                    CornerRadius="2"
-                                    Height="{TemplateBinding Height}" />
-                            <Border x:Name="IndeterminateGlow"
-                                    Width="80"
-                                    Height="{TemplateBinding Height}"
-                                    Canvas.Left="-80"
-                                    Background="{TemplateBinding Foreground}"
-                                    CornerRadius="2"
-                                    Visibility="Collapsed" />
-                        </Canvas>
+                                    CornerRadius="2" />
+                            <Canvas ClipToBounds="True">
+                                <Border x:Name="IndeterminateGlow"
+                                        Width="80"
+                                        Height="{TemplateBinding Height}"
+                                        Canvas.Left="-80"
+                                        Background="{TemplateBinding Foreground}"
+                                        CornerRadius="2"
+                                        Visibility="Collapsed" />
+                            </Canvas>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsIndeterminate" Value="True">

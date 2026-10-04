@@ -133,6 +133,13 @@ namespace Hexprite.Tests
                 var spinner = FindLogicalOrVisualChildren<LoadingSpinner>(mainWindow).FirstOrDefault();
                 Assert.NotNull(spinner);
 
+                var overlayCard = Assert.IsType<Border>(spinner.Parent is StackPanel sp ? sp.Parent : null);
+                var overlayGrid = Assert.IsType<Grid>(overlayCard.Parent);
+
+                // Overlay MUST span all rows of the main window (0 to 4), not just Row 0 (TitleBar)
+                Assert.Equal(0, Grid.GetRow(overlayGrid));
+                Assert.Equal(5, Grid.GetRowSpan(overlayGrid));
+
                 mainWindow.Close();
                 Assert.NotNull(mainWindow);
             });
@@ -158,6 +165,37 @@ namespace Hexprite.Tests
                 window.Show();
                 window.UpdateLayout();
                 Assert.True(pb.IsIndeterminate);
+                window.Close();
+            });
+        }
+
+        [Fact]
+        public void ModernProgressBar_Determinate_MeasuresAndSetsIndicatorProperly()
+        {
+            WpfTestHelper.RunOnSta(() =>
+            {
+                var pb = new ProgressBar
+                {
+                    IsIndeterminate = false,
+                    Minimum = 0,
+                    Maximum = 100,
+                    Value = 50,
+                    Width = 100,
+                    Height = 4
+                };
+                var window = new Window
+                {
+                    Width = 200,
+                    Height = 100,
+                    Content = pb
+                };
+                window.Show();
+                window.UpdateLayout();
+
+                var indicator = pb.Template.FindName("PART_Indicator", pb) as FrameworkElement;
+                Assert.NotNull(indicator);
+                Assert.Equal(50, indicator.ActualWidth);
+
                 window.Close();
             });
         }
