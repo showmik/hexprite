@@ -6,8 +6,13 @@
              xmlns:core="clr-namespace:Hexprite.Core"
              xmlns:rendering="clr-namespace:Hexprite.Rendering"
              xmlns:services="clr-namespace:Hexprite.Services"
+             xmlns:converters="clr-namespace:Hexprite.Converters"
              mc:Ignorable="d"
              d:DesignHeight="800" d:DesignWidth="320">
+
+    <UserControl.Resources>
+        <converters:EnumToIndexConverter x:Key="EnumToIndexConverter" />
+    </UserControl.Resources>
 
     <Border Background="Transparent"
             BorderThickness="0"
@@ -814,7 +819,7 @@
                                               Style="{StaticResource ModernComboBoxStyle}"
                                               Height="26"
                                               Margin="0,0,0,12"
-                                              SelectedIndex="{Binding AnimationLayout}"
+                                              SelectedIndex="{Binding AnimationLayout, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}"
                                               Visibility="{Binding IsAnimationEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <ComboBoxItem Content="Array of frames (pointers)"/>
                                         <ComboBoxItem Content="Vertical Sprite Sheet (tall)"/>
@@ -832,7 +837,7 @@
                                               Style="{StaticResource ModernComboBoxStyle}"
                                               Height="26"
                                               Margin="0,0,0,12"
-                                              SelectedIndex="{Binding TimingMode}"
+                                              SelectedIndex="{Binding TimingMode, Mode=TwoWay, Converter={StaticResource EnumToIndexConverter}}"
                                               Visibility="{Binding IsTimingModeVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <ComboBoxItem Content="Blocking (delay)"/>
                                         <ComboBoxItem Content="Non-blocking (millis)"/>
