@@ -28,9 +28,9 @@ namespace Hexprite.Tests.ViewModels
             try { if (File.Exists(_tempSettingsFile + ".bak")) File.Delete(_tempSettingsFile + ".bak"); } catch { }
         }
 
-        private MainViewModel CreateMainViewModel()
+        private MainViewModel CreateMainViewModel(Mock<ICodeGeneratorService>? codeGenMock = null)
         {
-            var codeGenMock = new Mock<ICodeGeneratorService>();
+            codeGenMock ??= new Mock<ICodeGeneratorService>();
             var drawingMock = new Mock<IDrawingService>();
             var clipboardMock = new Mock<IClipboardService>();
             var pixelClipboardMock = new Mock<IPixelClipboardService>();
@@ -80,6 +80,39 @@ namespace Hexprite.Tests.ViewModels
 
             Assert.True(propChanged);
             Assert.Equal(AnimationTimingMode.NonBlockingMillis, vm.ExportSettings.TimingMode);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task UpdateTextOutputs_PassesUserSelectedTimingAndLayoutToGenerator()
+        {
+            ExportSettings? captured = null;
+            var codeGenMock = new Mock<ICodeGeneratorService>();
+            codeGenMock
+                .Setup(c => c.GenerateCodeAsync(
+                    It.IsAny<System.Collections.Generic.List<bool[]>>(), It.IsAny<int>(), It.IsAny<int>(),
+                    It.IsAny<ExportSettings>(), It.IsAny<bool>(), It.IsAny<bool[,]?>(),
+                    It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(),
+                    It.IsAny<FloatingPasteMode>(), It.IsAny<System.Collections.Generic.List<int>?>(),
+                    It.IsAny<System.Threading.CancellationToken>()))
+                .Callback<System.Collections.Generic.List<bool[]>, int, int, ExportSettings, bool, bool[,]?, int, int, int, int,
+                          FloatingPasteMode, System.Collections.Generic.List<int>?, System.Threading.CancellationToken>(
+                    (_, _, _, s, _, _, _, _, _, _, _, _, _) => captured = s.Clone())
+                .ReturnsAsync("// code");
+
+            var vm = CreateMainViewModel(codeGenMock);
+            vm.ExportFormat = ExportFormat.AdafruitGfx;
+            vm.IsAnimationEnabled = true;
+            vm.TimingMode = AnimationTimingMode.NonBlockingMillis;
+            vm.AnimationLayout = AnimationExportLayout.VerticalSpriteSheet;
+            vm.GenerateFullSketch = true;
+
+            await vm.UpdateTextOutputsAsync();
+
+            Assert.NotNull(captured);
+            Assert.Equal(AnimationTimingMode.NonBlockingMillis, captured!.TimingMode);
+            Assert.Equal(AnimationExportLayout.VerticalSpriteSheet, captured.AnimationLayout);
+            Assert.Equal(vm.ExportSettings.LayerMode, captured.LayerMode);
+            Assert.True(captured.GenerateFullSketch);
         }
 
         [Fact]

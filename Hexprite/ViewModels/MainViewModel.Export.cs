@@ -276,24 +276,11 @@ namespace Hexprite.ViewModels
                 _isUpdatePending = false;
                     var token = CancelAndCreateNewTextUpdateCts();
 
-                    // Snapshot settings to avoid reading them from a different thread
-                    var settingsSnapshot = new ExportSettings
-                    {
-                        Format = _exportSettings.Format,
-                        SpriteName = _exportSettings.SpriteName,
-                        IncludeUsageComment = _exportSettings.IncludeUsageComment,
-                        IncludeDimensionConstants = _exportSettings.IncludeDimensionConstants,
-                        UseCommaSeparator = _exportSettings.UseCommaSeparator,
-                        BytesPerLine = _exportSettings.BytesPerLine,
-                        UppercaseHex = _exportSettings.UppercaseHex,
-                        IncludeRowComments = _exportSettings.IncludeRowComments,
-                        IncludeArraySize = _exportSettings.IncludeArraySize,
-                        GenerateFullSketch = _exportSettings.GenerateFullSketch,
-                        ExportAsAnimation = _exportSettings.ExportAsAnimation,
-                        AnimationLayout = _exportSettings.AnimationLayout,
-                        FrameRateFps = SpriteState.FrameRateFps,
-                        Compression = _exportSettings.Compression,
-                    };
+                    // Snapshot settings to avoid reading them from a different thread.
+                    // Clone() copies every field, so new settings (e.g. TimingMode) can never be
+                    // silently dropped the way a hand-maintained field list can.
+                    var settingsSnapshot = _exportSettings.Clone();
+                    settingsSnapshot.FrameRateFps = SpriteState.FrameRateFps;
 
                     try
                     {
