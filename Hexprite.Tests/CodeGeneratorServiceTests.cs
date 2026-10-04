@@ -1987,7 +1987,7 @@ const uint8_t anim[2][16] = {
 
         Assert.Contains("millis()", sketch);
         Assert.Contains("static unsigned long lastFrameTime = 0;", sketch);
-        Assert.Contains("static int currentFrame = 0;", sketch);
+        Assert.Contains("static uint16_t currentFrame = 0;", sketch);
         Assert.Contains("if (now - lastFrameTime >=", sketch);
         Assert.Contains("currentFrame = (currentFrame + 1) % 2;", sketch);
         Assert.DoesNotContain("delay(1000 / FACEANIM_FPS);", sketch);
@@ -2041,7 +2041,7 @@ const uint8_t anim[2][16] = {
 
         Assert.Contains("millis()", sketch);
         Assert.Contains("static unsigned long lastFrameTime = 0;", sketch);
-        Assert.Contains("static int currentFrame = 0;", sketch);
+        Assert.Contains("static uint16_t currentFrame = 0;", sketch);
         Assert.Contains("currentFrame = (currentFrame + 1) % 2;", sketch);
         string loopCode = sketch[sketch.IndexOf("void loop()", StringComparison.Ordinal)..];
         Assert.DoesNotContain("delay(", loopCode);

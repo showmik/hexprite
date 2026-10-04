@@ -371,7 +371,7 @@ public sealed class ArduinoFeaturesTests
         // Assert
         Assert.Contains("const uint8_t HEARTANIM_DELAYS[2] = {", code);
         Assert.Contains("0x01, 0x03", code);
-        Assert.Contains("unsigned long frameDuration = (1000UL / 10) * HEARTANIM_DELAYS[currentFrame];", code);
+        Assert.Contains("unsigned long frameDuration = ((1000UL * HEARTANIM_DELAYS[currentFrame]) / 10);", code);
         Assert.Contains("lcd.setCursor(15, 0);", code);
         Assert.Contains("lcd.write((byte)0);", code);
         Assert.Contains("replace lcd.init()/backlight() with lcd.begin(16, 2);", code);

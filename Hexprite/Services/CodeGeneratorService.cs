@@ -295,6 +295,15 @@ namespace Hexprite.Services
                     }
                 }
 
+                // Flattened sprite sheets and compressed animations are emitted by the single-image
+                // builders above, which never declare the playback rate. Generated sketches/usage
+                // code reference NAME_FPS, so declare it next to the dimension constants.
+                if (isAnimation && settings.IncludeDimensionConstants)
+                {
+                    coreOutput = EnsureFpsConstant(coreOutput, name.ToUpperInvariant(), Math.Max(1, settings.FrameRateFps),
+                        isPython: settings.Format == ExportFormat.MicroPython);
+                }
+
                 // Append delays array for flattened sprite sheets, and for ArrayOfFrames when
                 // compression is active (the uncompressed ArrayOfFrames case is handled by the
                 // dedicated *Animation builders below via useAnimationBuilder instead).
@@ -567,7 +576,7 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"//   display.drawBitmap(x, y, {name}[i], {width}, {height}, color);");
                 if (frameDelays != null && frameDelays.Exists(d => d != 1))
                 {
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000 / {fps}) * {name.ToUpperInvariant()}_DELAYS[i]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000UL * pgm_read_byte(&{name.ToUpperInvariant()}_DELAYS[i])) / {fps});");
                 }
                 else
                 {
@@ -696,7 +705,7 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"//   u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {height}, {name}[i]);");
                 if (frameDelays != null && frameDelays.Exists(d => d != 1))
                 {
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000 / {fps}) * {name.ToUpperInvariant()}_DELAYS[i]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000UL * {name.ToUpperInvariant()}_DELAYS[i]) / {fps});");
                 }
                 else
                 {
@@ -757,7 +766,7 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"//   u8g2.drawXBMP(x, y, {width}, {height}, {name}[i]);");
                 if (frameDelays != null && frameDelays.Exists(d => d != 1))
                 {
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000 / {fps}) * {name.ToUpperInvariant()}_DELAYS[i]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000UL * pgm_read_byte(&{name.ToUpperInvariant()}_DELAYS[i])) / {fps});");
                 }
                 else
                 {
@@ -818,7 +827,7 @@ namespace Hexprite.Services
                 sb.AppendLine(CultureInfo.InvariantCulture, $"//   drawBitmap(x, y, {name}[i], {width}, {height});");
                 if (frameDelays != null && frameDelays.Exists(d => d != 1))
                 {
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000 / {fps}) * {name.ToUpperInvariant()}_DELAYS[i]);");
+                    sb.AppendLine(CultureInfo.InvariantCulture, $"//   delay((1000UL * {name.ToUpperInvariant()}_DELAYS[i]) / {fps});");
                 }
                 else
                 {
@@ -2275,6 +2284,93 @@ namespace Hexprite.Services
 
         public static int BytesPerRow(int width) => (int)Math.Ceiling(width / 8.0);
 
+        /// <summary>
+        /// Ensures a <c>NAME_FPS</c> constant is declared, inserting it directly after the
+        /// <c>NAME_HEIGHT</c> declaration when missing. No-op if already declared or if there is
+        /// no height declaration to anchor to (formats that never reference FPS).
+        /// </summary>
+        private static string EnsureFpsConstant(string code, string upperName, int fps, bool isPython)
+        {
+            if (Regex.IsMatch(code, $@"\b{upperName}_FPS\s*="))
+                return code;
+
+            var heightLine = new Regex(isPython
+                ? $@"^{upperName}_HEIGHT\s*=.*$"
+                : $@"^const\s+\w+\s+{upperName}_HEIGHT\s*=.*;\s*$", RegexOptions.Multiline);
+
+            var match = heightLine.Match(code);
+            if (!match.Success)
+                return code;
+
+            string decl = isPython
+                ? string.Create(CultureInfo.InvariantCulture, $"{upperName}_FPS = {fps}")
+                : string.Create(CultureInfo.InvariantCulture, $"const uint8_t {upperName}_FPS = {fps};");
+
+            string lineText = match.Value.TrimEnd('\r');
+            return code.Remove(match.Index, lineText.Length).Insert(match.Index, lineText + "\n" + decl);
+        }
+
+        /// <summary>
+        /// Builds a C expression for how long (ms) a frame stays on screen.
+        /// Multiplies before dividing so per-frame delays aren't compounded by integer
+        /// truncation (e.g. 3 frames at 12 FPS = 250 ms, not 3 × 83 = 249 ms), and reads the
+        /// delays table with <c>pgm_read_byte</c> when it lives in PROGMEM (reading flash data
+        /// as a RAM array returns garbage on AVR).
+        /// </summary>
+        private static string FrameDurationExpr(string coreOutput, string upperName, string fpsExpr, string? delayIndex)
+        {
+            if (delayIndex == null)
+                return $"(1000UL / {fpsExpr})";
+
+            bool delaysInProgmem = Regex.IsMatch(coreOutput, $@"PROGMEM\s+{upperName}_DELAYS\s*\[");
+            string delay = delaysInProgmem
+                ? $"pgm_read_byte(&{upperName}_DELAYS[{delayIndex}])"
+                : $"{upperName}_DELAYS[{delayIndex}]";
+            return $"((1000UL * {delay}) / {fpsExpr})";
+        }
+
+        /// <summary>
+        /// Emits the opening of a non-blocking millis() frame scheduler. After this, the caller
+        /// emits the drawing code for <c>currentFrame</c> and then <see cref="AppendNonBlockingFooter"/>.
+        /// <list type="bullet">
+        /// <item>The first frame is drawn immediately instead of after one blank interval.</item>
+        /// <item>The wait is the duration of the frame currently on screen (not the next one).</item>
+        /// <item>The schedule advances by exactly one frame duration so it doesn't drift with
+        /// loop jitter, and resynchronizes if the loop fell more than a frame behind.</item>
+        /// <item>No early <c>return</c>, so user code placed after the block keeps running.</item>
+        /// </list>
+        /// </summary>
+        private static void AppendNonBlockingHeader(StringBuilder sb, string durationExpr, int numFrames)
+        {
+            sb.AppendLine("  static unsigned long lastFrameTime = 0;");
+            sb.AppendLine("  static uint16_t currentFrame = 0;");
+            sb.AppendLine("  static bool started = false;");
+            sb.AppendLine("  unsigned long now = millis();");
+            sb.AppendLine("  // How long the frame currently on screen should stay visible");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = {durationExpr};");
+            sb.AppendLine("  bool redraw = false;");
+            sb.AppendLine();
+            sb.AppendLine("  if (!started) {");
+            sb.AppendLine("    started = true;");
+            sb.AppendLine("    lastFrameTime = now;");
+            sb.AppendLine("    redraw = true;");
+            sb.AppendLine("  } else if (now - lastFrameTime >= frameDuration) {");
+            sb.AppendLine("    // Fixed-step schedule avoids drift; resync if we fell more than a frame behind");
+            sb.AppendLine("    lastFrameTime = (now - lastFrameTime < 2 * frameDuration) ? lastFrameTime + frameDuration : now;");
+            sb.AppendLine(CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};");
+            sb.AppendLine("    redraw = true;");
+            sb.AppendLine("  }");
+            sb.AppendLine();
+            sb.AppendLine("  if (redraw) {");
+        }
+
+        private static void AppendNonBlockingFooter(StringBuilder sb)
+        {
+            sb.AppendLine("  }");
+            sb.AppendLine();
+            sb.AppendLine("  // Other non-blocking work can run here every loop iteration.");
+        }
+
         // ═══════════════════════════════════════════════════════════════════════
         //  Full Sketch Wrappers
         // ═══════════════════════════════════════════════════════════════════════
@@ -2474,20 +2570,10 @@ namespace Hexprite.Services
 
                 if (cfg.TimingMode == AnimationTimingMode.NonBlockingMillis)
                 {
-                    sb.AppendLine("  static unsigned long lastFrameTime = 0;");
-                    sb.AppendLine("  static int currentFrame = 0;");
-                    sb.AppendLine("  unsigned long now = millis();");
-                    sb.AppendLine();
-                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = (1000UL / {upperName}_FPS) * {upperName}_DELAYS[currentFrame];");
-                        sb.AppendLine("  if (now - lastFrameTime >= frameDuration) {");
-                    }
-                    else
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000UL / {upperName}_FPS)) {{");
-                    }
-                    sb.AppendLine("    lastFrameTime = now;");
+                    bool hasDelays = frameDelays != null && frameDelays.Exists(d => d != 1);
+                    AppendNonBlockingHeader(sb,
+                        FrameDurationExpr(coreOutput, upperName, $"{upperName}_FPS", hasDelays ? "currentFrame" : null),
+                        numFrames);
 
                     if (compressionActive)
                     {
@@ -2529,8 +2615,7 @@ namespace Hexprite.Services
                         sb.AppendLine("    display.display();");
                     }
 
-                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};"));
-                    sb.AppendLine("  }");
+                    AppendNonBlockingFooter(sb);
                 }
                 else if (compressionActive)
                 {
@@ -2542,7 +2627,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     }
                     else
                     {
@@ -2557,7 +2642,7 @@ namespace Hexprite.Services
                     sb.AppendLine("  display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[0]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "0")});");
                     }
                     else
                     {
@@ -2569,7 +2654,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i + 1]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i + 1")});");
                     }
                     else
                     {
@@ -2585,7 +2670,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     }
                     else
                     {
@@ -2603,7 +2688,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     }
                     else
                     {
@@ -2620,7 +2705,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    display.display();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     }
                     else
                     {
@@ -2722,20 +2807,10 @@ namespace Hexprite.Services
 
                 if (cfg.TimingMode == AnimationTimingMode.NonBlockingMillis)
                 {
-                    sb.AppendLine("  static unsigned long lastFrameTime = 0;");
-                    sb.AppendLine("  static int currentFrame = 0;");
-                    sb.AppendLine("  unsigned long now = millis();");
-                    sb.AppendLine();
-                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = (1000UL / {upperName}_FPS) * {upperName}_DELAYS[currentFrame];");
-                        sb.AppendLine("  if (now - lastFrameTime >= frameDuration) {");
-                    }
-                    else
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000UL / {upperName}_FPS)) {{");
-                    }
-                    sb.AppendLine("    lastFrameTime = now;");
+                    bool hasDelays = frameDelays != null && frameDelays.Exists(d => d != 1);
+                    AppendNonBlockingHeader(sb,
+                        FrameDurationExpr(coreOutput, upperName, $"{upperName}_FPS", hasDelays ? "currentFrame" : null),
+                        numFrames);
 
                     if (isDelta)
                     {
@@ -2793,8 +2868,7 @@ namespace Hexprite.Services
                         sb.AppendLine("    u8g2.sendBuffer();");
                     }
 
-                    sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {numFrames};"));
-                    sb.AppendLine("  }");
+                    AppendNonBlockingFooter(sb);
                 }
                 else if (compressionActive)
                 {
@@ -2808,7 +2882,7 @@ namespace Hexprite.Services
                         sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, buffer);"));
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
@@ -2822,7 +2896,7 @@ namespace Hexprite.Services
                         sb.AppendLine(CultureInfo.InvariantCulture, $"  u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}_FRAME_0);");
                     sb.AppendLine("  u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[0]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"  delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "0")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"  delay(1000 / {upperName}_FPS);");
                     sb.AppendLine();
@@ -2830,7 +2904,7 @@ namespace Hexprite.Services
                     sb.AppendLine(CultureInfo.InvariantCulture, $"    drawDeltaFrame(x, y, &{name}_DELTAS[pgm_read_word(&{upperName}_FRAME_OFFSETS[i])]);");
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i + 1]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i + 1")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
@@ -2845,7 +2919,7 @@ namespace Hexprite.Services
                         sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {bytesPerRow}, {upperName}_HEIGHT, {name}[i]);"));
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
@@ -2862,7 +2936,7 @@ namespace Hexprite.Services
                         sb.AppendLine(string.Create(System.Globalization.CultureInfo.InvariantCulture, $"    u8g2.drawBitmap(x, y, {BytesPerRow(width)}, {upperName}_FRAME_HEIGHT, &{name}[i * {frameBytes}]);"));
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
@@ -2880,7 +2954,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    u8g2.setMaxClipWindow();");
                     sb.AppendLine("    u8g2.sendBuffer();");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {upperName}_FPS) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, upperName + "_FPS", "i")});");
                     else
                         sb.AppendLine(CultureInfo.InvariantCulture, $"    delay(1000 / {upperName}_FPS);");
                     sb.AppendLine("  }");
@@ -3434,7 +3508,7 @@ namespace Hexprite.Services
                     sb.AppendLine("    lcd.write((byte)i);");
                     if (frameDelays != null && frameDelays.Exists(d => d != 1))
                     {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay((1000 / {fps}) * {upperName}_DELAYS[i]);");
+                        sb.AppendLine(CultureInfo.InvariantCulture, $"    delay({FrameDurationExpr(coreOutput, upperName, fps.ToString(CultureInfo.InvariantCulture), "i")});");
                     }
                     else
                     {
@@ -3444,24 +3518,13 @@ namespace Hexprite.Services
                 }
                 else
                 {
-                    sb.AppendLine("  static unsigned long lastFrameTime = 0;");
-                    sb.AppendLine("  static int currentFrame = 0;");
-                    sb.AppendLine("  unsigned long now = millis();");
-                    sb.AppendLine();
-                    if (frameDelays != null && frameDelays.Exists(d => d != 1))
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  unsigned long frameDuration = (1000UL / {fps}) * {upperName}_DELAYS[currentFrame];");
-                        sb.AppendLine("  if (now - lastFrameTime >= frameDuration) {");
-                    }
-                    else
-                    {
-                        sb.AppendLine(CultureInfo.InvariantCulture, $"  if (now - lastFrameTime >= (1000UL / {fps})) {{");
-                    }
-                    sb.AppendLine("    lastFrameTime = now;");
+                    bool hasDelays = frameDelays != null && frameDelays.Exists(d => d != 1);
+                    AppendNonBlockingHeader(sb,
+                        FrameDurationExpr(coreOutput, upperName, fps.ToString(CultureInfo.InvariantCulture), hasDelays ? "currentFrame" : null),
+                        count);
                     sb.AppendLine("    lcd.setCursor(15, 0);");
                     sb.AppendLine("    lcd.write((byte)currentFrame);");
-                    sb.AppendLine(CultureInfo.InvariantCulture, $"    currentFrame = (currentFrame + 1) % {count};");
-                    sb.AppendLine("  }");
+                    AppendNonBlockingFooter(sb);
                 }
                 sb.AppendLine("}");
             }
