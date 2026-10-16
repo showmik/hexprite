@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Hexprite.Tests
 {
+    [Collection("AutosaveDirectory")]
     [Trait("Category", "Unit")]
     public class FontDocumentM1StateHardeningTests
     {

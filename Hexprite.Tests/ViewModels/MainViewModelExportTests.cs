@@ -109,7 +109,7 @@ namespace Hexprite.Tests.ViewModels
             await vm.UpdateTextOutputsAsync();
 
             Assert.NotNull(captured);
-            Assert.Equal(AnimationTimingMode.NonBlockingMillis, captured!.TimingMode);
+            Assert.Equal(AnimationTimingMode.NonBlockingMillis, captured.TimingMode);
             Assert.Equal(AnimationExportLayout.VerticalSpriteSheet, captured.AnimationLayout);
             Assert.Equal(vm.ExportSettings.LayerMode, captured.LayerMode);
             Assert.True(captured.GenerateFullSketch);

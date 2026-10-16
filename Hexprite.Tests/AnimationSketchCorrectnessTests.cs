@@ -31,14 +31,22 @@ namespace Hexprite.Tests
         public static IEnumerable<object[]> AllCombinations()
         {
             foreach (var fmt in SketchFormats)
-            foreach (AnimationExportLayout layout in Enum.GetValues(typeof(AnimationExportLayout)))
-            foreach (AnimationTimingMode timing in Enum.GetValues(typeof(AnimationTimingMode)))
-            foreach (var compression in new[] { CompressionMode.None, CompressionMode.Rle })
-            foreach (var withDelays in new[] { false, true })
             {
-                if (fmt == ExportFormat.LiquidCrystalChar && (layout != AnimationExportLayout.ArrayOfFrames || compression != CompressionMode.None))
-                    continue; // layout/compression are not applicable to LCD custom chars
-                yield return [fmt, layout, timing, compression, withDelays];
+                foreach (AnimationExportLayout layout in Enum.GetValues(typeof(AnimationExportLayout)))
+                {
+                    foreach (AnimationTimingMode timing in Enum.GetValues(typeof(AnimationTimingMode)))
+                    {
+                        foreach (var compression in new[] { CompressionMode.None, CompressionMode.Rle })
+                        {
+                            foreach (var withDelays in new[] { false, true })
+                            {
+                                if (fmt == ExportFormat.LiquidCrystalChar && (layout != AnimationExportLayout.ArrayOfFrames || compression != CompressionMode.None))
+                                    continue; // layout/compression are not applicable to LCD custom chars
+                                yield return [fmt, layout, timing, compression, withDelays];
+                            }
+                        }
+                    }
+                }
             }
         }
 

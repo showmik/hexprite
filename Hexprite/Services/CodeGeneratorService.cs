@@ -2291,12 +2291,12 @@ namespace Hexprite.Services
         /// </summary>
         private static string EnsureFpsConstant(string code, string upperName, int fps, bool isPython)
         {
-            if (Regex.IsMatch(code, $@"\b{upperName}_FPS\s*="))
+            if (Regex.IsMatch(code, $@"\b{upperName}_FPS\s*=", RegexOptions.None, TimeSpan.FromSeconds(1)))
                 return code;
 
             var heightLine = new Regex(isPython
                 ? $@"^{upperName}_HEIGHT\s*=.*$"
-                : $@"^const\s+\w+\s+{upperName}_HEIGHT\s*=.*;\s*$", RegexOptions.Multiline);
+                : $@"^const\s+\w+\s+{upperName}_HEIGHT\s*=.*;\s*$", RegexOptions.Multiline, TimeSpan.FromSeconds(1));
 
             var match = heightLine.Match(code);
             if (!match.Success)
@@ -2322,7 +2322,7 @@ namespace Hexprite.Services
             if (delayIndex == null)
                 return $"(1000UL / {fpsExpr})";
 
-            bool delaysInProgmem = Regex.IsMatch(coreOutput, $@"PROGMEM\s+{upperName}_DELAYS\s*\[");
+            bool delaysInProgmem = Regex.IsMatch(coreOutput, $@"PROGMEM\s+{upperName}_DELAYS\s*\[", RegexOptions.None, TimeSpan.FromSeconds(1));
             string delay = delaysInProgmem
                 ? $"pgm_read_byte(&{upperName}_DELAYS[{delayIndex}])"
                 : $"{upperName}_DELAYS[{delayIndex}]";
