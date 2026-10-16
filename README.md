@@ -163,7 +163,7 @@ Right now, the software is in beta. I plan to actively keep developing Hexprite 
 
 | Phase | Milestone | Focus Areas |
 |---|---|---|
-| **Phase 01** | `v0.3.x Beta → v1.0 Stable`<br/>*(Active Focus)* | Strict 1-Bit Engine, Embedded Font Studio, Live Hardware Streaming (Auto-Baud), Code Gen (Adafruit GFX/u8g2/LiquidCrystal/MicroPython), Multi-Color E-Paper (B/W/Red 2-bit planes), and Tilemap Studio. |
+| **Phase 01** | `v0.4.x Beta → v1.0 Stable`<br/>*(Active Focus)* | Strict 1-Bit Engine, Embedded Font Studio, Live Hardware Streaming (Auto-Baud), Code Gen (Adafruit GFX/u8g2/LiquidCrystal/MicroPython), Multi-Color E-Paper (B/W/Red 2-bit planes), and Tilemap Studio. |
 | **Phase 02** | `v1.1.0 → v1.5.0`<br/>*(Planned Next)* | Keyframe Motion Timeline & Curves, Dual-Mode Tweening (Pre-baked for 8-bit + C runtime for 32-bit), Headless `hexprite-cli` for CI/CD & PlatformIO, VS Code Extension, and Cross-Platform Port (Linux & macOS via modern UI). |
 | **Phase 03** | `v2.0.0`<br/>*(Future Release)* | Popular TFT Displays (ST7789, ILI9341, GC9A01), Multi-Depth Canvas (1-bit, 2/4-bit grayscale, 16-bit color), 16/256-Color Hardware Palettes, LVGL True-Color Export, and SPI Flash / SD Card Asset Packaging. |
 

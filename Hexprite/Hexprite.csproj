@@ -14,7 +14,7 @@
 		<Product>Hexprite</Product>
 		<Company>Intisar</Company>
 		<Description>Graphics editor for embedded displays</Description>
-		<Version>0.3.0-beta</Version>
+		<Version>0.4.0-beta</Version>
 		<Copyright>Copyright (c) 2026 Intisar Bin Naim</Copyright>
 		<PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
 

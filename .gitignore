@@ -506,7 +506,7 @@ implementation_plan.md
 /.claude
 *.md
 !CHANGELOG.md
+!README.md
 /.codex
 *.iss
 /scripts
-/CHANGELOG.md
