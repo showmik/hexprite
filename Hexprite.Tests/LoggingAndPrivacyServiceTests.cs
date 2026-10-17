@@ -387,5 +387,37 @@ namespace Hexprite.Tests
                 }
             }
         }
+
+        [Fact]
+        public void IsFirstRun_WhenSuppressFirstRunDialogIsTrue_ReturnsFalseEvenWithoutMarkerFile()
+        {
+            bool previousState = LoggingService.SuppressFirstRunDialog;
+            try
+            {
+                LoggingService.SuppressFirstRunDialog = true;
+                Assert.False(LoggingService.IsFirstRun());
+            }
+            finally
+            {
+                LoggingService.SuppressFirstRunDialog = previousState;
+            }
+        }
+
+        [Fact]
+        public void SuppressFirstRunDialog_CanBeToggled()
+        {
+            bool previousState = LoggingService.SuppressFirstRunDialog;
+            try
+            {
+                LoggingService.SuppressFirstRunDialog = true;
+                Assert.True(LoggingService.SuppressFirstRunDialog);
+                LoggingService.SuppressFirstRunDialog = false;
+                Assert.False(LoggingService.SuppressFirstRunDialog);
+            }
+            finally
+            {
+                LoggingService.SuppressFirstRunDialog = previousState;
+            }
+        }
     }
 }

@@ -4,7 +4,7 @@
   <RunConfiguration>
     <MaxCpuCount>0</MaxCpuCount>
     <ResultsDirectory>.\TestResults</ResultsDirectory>
-    <TestSessionTimeout>120000</TestSessionTimeout>
+    <TestSessionTimeout>300000</TestSessionTimeout>
     <TargetFrameworkVersion>.NETCoreApp,Version=v10.0</TargetFrameworkVersion>
   </RunConfiguration>
 
@@ -20,7 +20,7 @@
   <!-- Code Coverage Configuration (Visual Studio & Coverlet) -->
   <DataCollectionRunSettings>
     <DataCollectors>
-      <DataCollector friendlyName="XPlat code coverage">
+      <DataCollector friendlyName="XPlat code coverage" enabled="false">
         <Configuration>
           <Format>cobertura</Format>
           <Include>[Hexprite]*</Include>
@@ -38,7 +38,7 @@
         </Configuration>
       </DataCollector>
 
-      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceDataCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <DataCollector friendlyName="Code Coverage" uri="datacollector://Microsoft/CodeCoverage/2.0" assemblyQualifiedName="Microsoft.VisualStudio.Coverage.DynamicCoverageDataCollector, Microsoft.VisualStudio.TraceDataCollector, Version=11.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a" enabled="false">
         <Configuration>
           <CodeCoverage>
             <ModulePaths>

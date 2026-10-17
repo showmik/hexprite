@@ -14,6 +14,7 @@ namespace Hexprite.Tests
 
         public static void EnsureApplication()
         {
+            Hexprite.Services.LoggingService.SuppressFirstRunDialog = true;
             if (Application.Current == null)
             {
                 lock (_appLock)

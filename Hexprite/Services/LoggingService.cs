@@ -168,8 +168,18 @@ namespace Hexprite.Services
         private static readonly string FirstRunMarkerFile =
             Path.Combine(UserSettingsDirectory, ".first-run-complete");
 
+        /// <summary>
+        /// When true, suppresses showing the first-run modal dialog (used by tests and headless CI).
+        /// </summary>
+        public static bool SuppressFirstRunDialog { get; set; }
+
         public static bool IsFirstRun()
         {
+            if (SuppressFirstRunDialog)
+            {
+                return false;
+            }
+
             return !File.Exists(FirstRunMarkerFile);
         }
 
